@@ -35,6 +35,30 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+## Downloading Benchmark Datasets
+
+Before running benchmarks, you need to download the necessary datasets:
+
+```bash
+# Download MMLU dataset
+python -m gemma_benchmark.scripts.download_data --mmlu
+
+# Download GSM8K dataset
+python -m gemma_benchmark.scripts.download_data --gsm8k
+
+# Download HumanEval dataset
+python -m gemma_benchmark.scripts.download_data --humaneval
+
+# Or download all datasets at once
+python -m gemma_benchmark.scripts.download_data --all
+```
+
+You can specify a custom data directory:
+
+```bash
+python -m gemma_benchmark.scripts.download_data --all --data-dir /path/to/data
+```
+
 ## Usage
 
 ### Basic Usage
@@ -121,9 +145,9 @@ If you use this benchmarking suite in your research, please cite:
 
 ```
 @software{gemma_benchmarking_suite,
-  author = {Hailey Cheng},
+  author = {Hailey Cheng,
   title = {Gemma Benchmarking Suite},
-  year = {2025},
+  year = {2023},
   url = {https://github.com/heilcheng/gemma-benchmark}
 }
 ```
