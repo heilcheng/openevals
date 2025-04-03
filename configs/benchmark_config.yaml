@@ -1,0 +1,47 @@
+# Benchmark Configuration
+
+# Model configurations
+models:
+  gemma-2b:
+    type: gemma
+    size: 2b
+    variant: it
+    cache_dir: cache/models
+  gemma-7b:
+    type: gemma
+    size: 7b
+    variant: it
+    cache_dir: cache/models
+  mistral-7b:
+    type: mistral
+    size: 7b
+    variant: instruct
+    cache_dir: cache/models
+
+# Task configurations
+tasks:
+  mmlu:
+    type: mmlu
+    data_path: data/mmlu
+    subset: all  # Can be "all" or a specific subject
+    shot_count: 5
+  
+  efficiency:
+    type: efficiency
+    sample_prompts:
+      - "Explain the theory of relativity"
+      - "Write a short story about a robot who discovers emotions"
+      - "Summarize the key events of World War II"
+      - "Describe the process of photosynthesis in plants"
+    output_lengths: [128, 256, 512, 1024]
+
+# Output configuration
+output:
+  path: results
+  visualize: true
+  dashboard: false
+
+# Hardware configuration - for reporting
+hardware:
+  device: auto  # auto, cuda, cpu, mps
+  precision: float16  # float16, float32, int8
