@@ -147,7 +147,7 @@ If you use this benchmarking suite in your research, please cite:
 @software{gemma_benchmarking_suite,
   author = {Hailey Cheng,
   title = {Gemma Benchmarking Suite},
-  year = {2023},
+  year = {2025},
   url = {https://github.com/heilcheng/gemma-benchmark}
 }
 ```
