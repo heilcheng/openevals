@@ -522,6 +522,7 @@ If you use this benchmarking suite in your research, please cite:
 
 ```bibtex
 @software{gemma_benchmarking_suite,
+<<<<<<< HEAD
   author = {Hailey Cheng},
   title = {Gemma Benchmarking Suite: Production-Ready Evaluation Framework},
   year = {2025},
@@ -540,3 +541,11 @@ If you use this benchmarking suite in your research, please cite:
 ---
 
 **⭐ Star this repository if it helps your research!**
+=======
+  author = {Hailey Cheng,
+  title = {Gemma Benchmarking Suite},
+  year = {2025},
+  url = {https://github.com/heilcheng/gemma-benchmark}
+}
+```
+>>>>>>> f4f03cae28fe45a1ff995de9d2124bfe9e7e6ade
