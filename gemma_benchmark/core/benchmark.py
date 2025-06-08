@@ -53,10 +53,12 @@ class GemmaBenchmark:
         # Validate configuration if requested
         if validate_config_schema:
             try:
-                from ..utils.config_validation import validate_config
+                from gemma_benchmark.utils.config_validation import validate_config
                 validate_config(self.config)
-                self.logger.info("Configuration validation passed")
-            except Exception as e:
+                self.logger.info("Configuration validation passed")    
+            except ImportError:
+                self.logger.warning("Config validation module not available, skipping validation")
+            except Exception as e:    
                 self.logger.warning(f"Configuration validation failed: {e}")
         
         self.models = {}

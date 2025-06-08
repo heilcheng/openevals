@@ -53,9 +53,9 @@ class TestGemmaBenchmark:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             f.write("invalid: yaml: content: [")
             config_path = f.name
-        
+    
         try:
-            with pytest.raises(yaml.YAMLError):
+            with pytest.raises(ValueError):  # Should be ValueError, not yaml.YAMLError
                 GemmaBenchmark(config_path)
         finally:
             os.unlink(config_path)

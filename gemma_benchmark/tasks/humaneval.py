@@ -140,6 +140,13 @@ class HumanevalBenchmark:
         Returns:
             True if all tests pass, False otherwise
         """
+        if any(dangerous in code.lower() for dangerous in [
+            'import os', 'import subprocess', 'open(', '__import__',
+            'eval(', 'exec(', 'compile('
+        ]):
+            self.logger.warning("Potentially dangerous code detected, skipping")
+            return False
+        
         try:
             # Create a temporary file with the code
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:

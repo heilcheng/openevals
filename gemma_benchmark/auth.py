@@ -300,12 +300,17 @@ def setup_complete_auth_flow() -> bool:
     return True
 
 # Convenience function for the main authentication check
+_auth_cache = {"authenticated": False, "last_check": 0}
+
 def ensure_authenticated() -> bool:
-    """
-    Ensure user is authenticated and can access required models.
-    This is the main function that should be called before model loading.
+    import time
+    now = time.time()
     
-    Returns:
-        True if authentication is successful, False otherwise
-    """
-    return setup_complete_auth_flow()
+    # Check cache (valid for 5 minutes)
+    if _auth_cache["authenticated"] and (now - _auth_cache["last_check"]) < 300:
+        return True
+    
+    result = setup_complete_auth_flow()
+    _auth_cache["authenticated"] = result
+    _auth_cache["last_check"] = now
+    return result

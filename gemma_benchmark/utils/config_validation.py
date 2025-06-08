@@ -268,24 +268,35 @@ def validate_config(config_dict: Dict[str, Any]) -> BenchmarkConfig:
     logger = logging.getLogger(__name__)
     
     try:
-        # Parse task configurations with their specific types
+        # Validate required sections first
+        required_sections = ['models', 'tasks']
+        for section in required_sections:
+            if section not in config_dict:
+                raise ValueError(f"Missing required section: {section}")
+        
+        # Parse task configurations with better error handling
         parsed_tasks = {}
         for task_name, task_config in config_dict.get('tasks', {}).items():
-            task_type = task_config.get('type')
-            
-            if task_type == TaskType.MMLU:
-                parsed_tasks[task_name] = MMLUTaskConfig(**task_config)
-            elif task_type == TaskType.GSM8K:
-                parsed_tasks[task_name] = GSM8KTaskConfig(**task_config)
-            elif task_type == TaskType.HUMANEVAL:
-                parsed_tasks[task_name] = HumanEvalTaskConfig(**task_config)
-            elif task_type == TaskType.EFFICIENCY:
-                parsed_tasks[task_name] = EfficiencyTaskConfig(**task_config)
-            else:
-                # Use base TaskConfig for unknown types
-                parsed_tasks[task_name] = TaskConfig(**task_config)
+            try:
+                task_type = task_config.get('type')
+                
+                if task_type == TaskType.MMLU:
+                    parsed_tasks[task_name] = MMLUTaskConfig(**task_config)
+                elif task_type == TaskType.GSM8K:
+                    parsed_tasks[task_name] = GSM8KTaskConfig(**task_config)
+                elif task_type == TaskType.HUMANEVAL:
+                    parsed_tasks[task_name] = HumanEvalTaskConfig(**task_config)
+                elif task_type == TaskType.EFFICIENCY:
+                    parsed_tasks[task_name] = EfficiencyTaskConfig(**task_config)
+                else:
+                    logger.warning(f"Unknown task type {task_type} for task {task_name}, using base config")
+                    parsed_tasks[task_name] = TaskConfig(**task_config)
+            except Exception as e:
+                logger.error(f"Failed to parse task {task_name}: {e}")
+                raise ValueError(f"Invalid configuration for task {task_name}: {e}")
         
         config_dict['tasks'] = parsed_tasks
+        
         
         # Validate the complete configuration
         validated_config = BenchmarkConfig(**config_dict)

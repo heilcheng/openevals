@@ -55,14 +55,21 @@ class SystemMonitor:
         if PSUTIL_AVAILABLE:
             try:
                 process = psutil.Process()
-                return process.memory_info().rss / (1024 ** 3)
+                memory_info = process.memory_info()
+                return memory_info.rss / (1024 ** 3)
             except Exception as e:
                 self.logger.warning(f"Failed to get memory usage with psutil: {e}")
-        
-        # Fallback for systems without psutil
+    
+    # Fallback implementation
         try:
             import resource
-            return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 ** 2)  # Linux: KB, macOS: bytes
+            ru_maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            # On Linux, ru_maxrss is in KB; on macOS, it's in bytes
+            import platform
+            if platform.system() == 'Darwin':  # macOS
+                return ru_maxrss / (1024 ** 3)
+            else:  # Linux
+                return ru_maxrss / (1024 ** 2)
         except Exception as e:
             self.logger.warning(f"Failed to get memory usage with resource: {e}")
             return 0.0

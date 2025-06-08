@@ -9,10 +9,10 @@ description = "Production-ready benchmarking framework for Google's Gemma models
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Hailey Cheng", email = "hailey.cheng@example.com"}
+    {name = "Hailey Cheng", email = "haileycheng@pm.me"}
 ]
 maintainers = [
-    {name = "Hailey Cheng", email = "hailey.cheng@example.com"}
+    {name = "Hailey Cheng", email = "haileycheng@pm.me"}
 ]
 keywords = [
     "machine-learning",

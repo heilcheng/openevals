@@ -61,6 +61,23 @@ class ModelWrapper:
         except Exception as e:
             self.logger.error(f"Generation failed: {e}")
             return f"ERROR: {str(e)}"
+        
+    def cleanup(self):
+        """Clean up model resources."""
+        if hasattr(self, 'model') and self.model is not None:
+            del self.model
+        if hasattr(self, 'tokenizer') and self.tokenizer is not None:
+            del self.tokenizer
+    
+        import gc
+        gc.collect()
+    
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            pass
 
 
 class GemmaLoader:
