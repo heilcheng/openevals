@@ -19,6 +19,95 @@ class MMLUBenchmark:
         self.shot_count = config.get("shot_count", 5)
         self.data = None
     
+    def _create_mock_data(self) -> Dict[str, List[Dict[str, Any]]]:
+        """Create mock MMLU data for demonstration when real data unavailable."""
+        self.logger.info("Creating mock MMLU data...")
+        
+        # Define some sample subjects and questions
+        mock_subjects = {
+            "mathematics": [
+                {
+                    "question": "What is the derivative of x^2?",
+                    "options": ["x", "2x", "x^2", "2"],
+                    "answer": 1,
+                    "subject": "mathematics"
+                },
+                {
+                    "question": "What is the integral of 2x?",
+                    "options": ["x^2", "x^2 + C", "2x^2", "2x^2 + C"],
+                    "answer": 1,
+                    "subject": "mathematics"
+                }
+            ],
+            "computer_science": [
+                {
+                    "question": "Which of the following is a programming language?",
+                    "options": ["HTML", "Python", "CSS", "JSON"],
+                    "answer": 1,
+                    "subject": "computer_science"
+                },
+                {
+                    "question": "What does CPU stand for?",
+                    "options": ["Central Processing Unit", "Computer Processing Unit", "Central Program Unit", "Computer Program Unit"],
+                    "answer": 0,
+                    "subject": "computer_science"
+                }
+            ],
+            "physics": [
+                {
+                    "question": "What is the speed of light in vacuum?",
+                    "options": ["3 × 10^8 m/s", "3 × 10^6 m/s", "3 × 10^10 m/s", "3 × 10^12 m/s"],
+                    "answer": 0,
+                    "subject": "physics"
+                }
+            ]
+        }
+        
+        # Create examples for few-shot learning
+        mock_examples = [
+            {
+                "question": "What is 2 + 2?",
+                "options": ["3", "4", "5", "6"],
+                "answer": 1
+            },
+            {
+                "question": "What is the capital of France?",
+                "options": ["London", "Berlin", "Paris", "Madrid"],
+                "answer": 2
+            }
+        ]
+        
+        # Build the data structure
+        data = {}
+        
+        if self.subset == "all":
+            # Include all subjects
+            for subject, questions in mock_subjects.items():
+                for question in questions:
+                    question["examples"] = mock_examples
+                data.update({subject: questions})
+        else:
+            # Include only the specified subset
+            if self.subset in mock_subjects:
+                questions = mock_subjects[self.subset]
+                for question in questions:
+                    question["examples"] = mock_examples
+                data[self.subset] = questions
+            else:
+                # Create a generic subject if subset not found
+                generic_questions = [
+                    {
+                        "question": f"Sample question for {self.subset}",
+                        "options": ["Option A", "Option B", "Option C", "Option D"],
+                        "answer": 0,
+                        "subject": self.subset,
+                        "examples": mock_examples
+                    }
+                ]
+                data[self.subset] = generic_questions
+        
+        return data
+    
     def load_data(self) -> Dict[str, List[Dict[str, Any]]]:
         """Load MMLU dataset from HuggingFace."""
         self.logger.info("Loading MMLU data from HuggingFace...")
@@ -109,22 +198,26 @@ class MMLUBenchmark:
             for example in subject_data:
                 prompt = self.format_prompt(example)
                 
-                # Get model response
-                response = model.generate(prompt, max_new_tokens=10, temperature=0.0)
-                
-                # Extract answer (look for A, B, C, D at start of response)
-                predicted_answer = None
-                response_clean = response.strip().upper()
-                
-                for i, letter in enumerate(['A', 'B', 'C', 'D']):
-                    if response_clean.startswith(letter):
-                        predicted_answer = i
-                        break
-                
-                # Check if correct
-                if predicted_answer == example["answer"]:
-                    subject_correct += 1
-                    results["overall"]["correct"] += 1
+                try:
+                    # Get model response
+                    response = model.generate(prompt, max_new_tokens=10, temperature=0.0)
+                    
+                    # Extract answer (look for A, B, C, D at start of response)
+                    predicted_answer = None
+                    response_clean = response.strip().upper()
+                    
+                    for i, letter in enumerate(['A', 'B', 'C', 'D']):
+                        if response_clean.startswith(letter):
+                            predicted_answer = i
+                            break
+                    
+                    # Check if correct
+                    if predicted_answer == example["answer"]:
+                        subject_correct += 1
+                        results["overall"]["correct"] += 1
+                except Exception as e:
+                    self.logger.error(f"Error evaluating example: {e}")
+                    # Continue with next example
             
             # Calculate subject accuracy
             subject_accuracy = subject_correct / subject_total if subject_total > 0 else 0

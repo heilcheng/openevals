@@ -1,19 +1,155 @@
 """
-Efficiency benchmarking for language models.
+Efficiency benchmarking for language models with enhanced system compatibility.
 """
 
 import time
 import logging
-import psutil
 import platform
+import gc
 from typing import Dict, List, Any, Optional
+from dataclasses import dataclass
+
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    logging.getLogger(__name__).warning("psutil not available - memory monitoring will be limited")
+
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    logging.getLogger(__name__).warning("PyTorch not available - GPU monitoring will be disabled")
+
+try:
+    import nvidia_ml_py3 as nvml
+    nvml.nvmlInit()
+    NVML_AVAILABLE = True
+except (ImportError, Exception):
+    NVML_AVAILABLE = False
 
 from ..core.model_loader import ModelWrapper
 
+
+@dataclass
+class EfficiencyMetrics:
+    """Container for efficiency metrics."""
+    latency: float
+    tokens_per_second: float
+    memory_usage_mb: float
+    gpu_memory_mb: Optional[float] = None
+    cpu_usage_percent: Optional[float] = None
+    error: Optional[str] = None
+
+
+class SystemMonitor:
+    """Cross-platform system monitoring utilities."""
+    
+    def __init__(self):
+        self.logger = logging.getLogger("gemma_benchmark.efficiency.monitor")
+    
+    def get_memory_usage(self) -> float:
+        """Get current memory usage in GB."""
+        if PSUTIL_AVAILABLE:
+            try:
+                process = psutil.Process()
+                return process.memory_info().rss / (1024 ** 3)
+            except Exception as e:
+                self.logger.warning(f"Failed to get memory usage with psutil: {e}")
+        
+        # Fallback for systems without psutil
+        try:
+            import resource
+            return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (1024 ** 2)  # Linux: KB, macOS: bytes
+        except Exception as e:
+            self.logger.warning(f"Failed to get memory usage with resource: {e}")
+            return 0.0
+    
+    def get_cpu_usage(self) -> Optional[float]:
+        """Get current CPU usage percentage."""
+        if PSUTIL_AVAILABLE:
+            try:
+                return psutil.cpu_percent(interval=0.1)
+            except Exception as e:
+                self.logger.warning(f"Failed to get CPU usage: {e}")
+        return None
+    
+    def get_gpu_memory_usage(self) -> Optional[float]:
+        """Get GPU memory usage in GB."""
+        if not TORCH_AVAILABLE:
+            return None
+        
+        try:
+            if torch.cuda.is_available():
+                # PyTorch method
+                memory_allocated = torch.cuda.memory_allocated() / (1024 ** 3)
+                return memory_allocated
+        except Exception as e:
+            self.logger.warning(f"Failed to get GPU memory with PyTorch: {e}")
+        
+        # NVML method as fallback
+        if NVML_AVAILABLE:
+            try:
+                handle = nvml.nvmlDeviceGetHandleByIndex(0)
+                info = nvml.nvmlDeviceGetMemoryInfo(handle)
+                return info.used / (1024 ** 3)
+            except Exception as e:
+                self.logger.warning(f"Failed to get GPU memory with NVML: {e}")
+        
+        return None
+    
+    def get_system_info(self) -> Dict[str, Any]:
+        """Get comprehensive system information."""
+        info = {
+            "os": platform.system(),
+            "os_version": platform.release(),
+            "python_version": platform.python_version(),
+            "architecture": platform.machine(),
+            "processor": platform.processor(),
+        }
+        
+        # CPU information
+        if PSUTIL_AVAILABLE:
+            try:
+                info.update({
+                    "cpu_count_physical": psutil.cpu_count(logical=False),
+                    "cpu_count_logical": psutil.cpu_count(logical=True),
+                    "memory_total_gb": psutil.virtual_memory().total / (1024 ** 3),
+                    "memory_available_gb": psutil.virtual_memory().available / (1024 ** 3),
+                })
+            except Exception as e:
+                self.logger.warning(f"Failed to get detailed system info: {e}")
+        
+        # PyTorch and GPU information
+        if TORCH_AVAILABLE:
+            try:
+                info.update({
+                    "torch_version": torch.__version__,
+                    "cuda_available": torch.cuda.is_available(),
+                })
+                
+                if torch.cuda.is_available():
+                    info.update({
+                        "cuda_version": torch.version.cuda,
+                        "cudnn_version": torch.backends.cudnn.version(),
+                        "gpu_count": torch.cuda.device_count(),
+                        "gpu_names": [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())],
+                        "gpu_memory_total_gb": [
+                            torch.cuda.get_device_properties(i).total_memory / (1024 ** 3) 
+                            for i in range(torch.cuda.device_count())
+                        ]
+                    })
+            except Exception as e:
+                self.logger.warning(f"Failed to get GPU info: {e}")
+        
+        return info
+
+
 class EfficiencyBenchmark:
     """
-    Benchmark for measuring model efficiency metrics like 
-    latency, memory usage, and tokens per second.
+    Enhanced benchmark for measuring model efficiency metrics.
     """
     
     def __init__(self, config: Dict[str, Any]):
@@ -26,41 +162,123 @@ class EfficiencyBenchmark:
         self.logger = logging.getLogger("gemma_benchmark.tasks.efficiency")
         self.config = config
         self.sample_prompts = config.get("sample_prompts", [
-            "Explain the theory of relativity",
-            "Write a short story about a robot who discovers emotions",
+            "Explain the theory of relativity in simple terms",
+            "Write a short story about a robot who discovers emotions",  
             "Summarize the key events of World War II",
             "Describe the process of photosynthesis in plants",
+            "What are the benefits of renewable energy?",
         ])
-        self.output_lengths = config.get("output_lengths", [128, 256, 512, 1024])
+        self.output_lengths = config.get("output_lengths", [64, 128, 256, 512])
+        self.warmup_runs = config.get("warmup_runs", 2)
+        self.measurement_runs = config.get("measurement_runs", 3)
         
-        # Detect hardware information
-        self.system_info = self._get_system_info()
+        # Initialize system monitor
+        self.monitor = SystemMonitor()
+        self.system_info = self.monitor.get_system_info()
+        
+        self.logger.info(f"Initialized efficiency benchmark with {len(self.sample_prompts)} prompts")
+        self.logger.info(f"Output lengths: {self.output_lengths}")
     
-    def _get_system_info(self) -> Dict[str, Any]:
-        """Get system hardware information."""
-        info = {
-            "os": platform.system(),
-            "python_version": platform.python_version(),
-            "cpu": platform.processor(),
-            "cpu_count": psutil.cpu_count(logical=False),
-            "cpu_count_logical": psutil.cpu_count(logical=True),
-            "memory_total": psutil.virtual_memory().total / (1024 ** 3),  # GB
-        }
+    def _cleanup_memory(self):
+        """Clean up memory between measurements."""
+        gc.collect()
+        if TORCH_AVAILABLE and torch.cuda.is_available():
+            try:
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            except Exception as e:
+                self.logger.warning(f"Failed to clear CUDA cache: {e}")
+    
+    def _measure_single_generation(self, model: ModelWrapper, prompt: str, max_tokens: int) -> EfficiencyMetrics:
+        """
+        Measure efficiency metrics for a single text generation.
         
-        # Try to detect GPU if available
+        Args:
+            model: The model to benchmark
+            prompt: Input prompt
+            max_tokens: Maximum tokens to generate
+            
+        Returns:
+            EfficiencyMetrics object with measurements
+        """
         try:
-            import torch
-            info["torch_version"] = torch.__version__
-            info["cuda_available"] = torch.cuda.is_available()
-            if torch.cuda.is_available():
-                info["cuda_version"] = torch.version.cuda
-                info["gpu_count"] = torch.cuda.device_count()
-                info["gpu_name"] = [torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]
-                info["gpu_memory"] = [torch.cuda.get_device_properties(i).total_memory / (1024 ** 3) for i in range(torch.cuda.device_count())]
-        except (ImportError, AttributeError):
-            info["torch_available"] = False
+            # Clean up before measurement
+            self._cleanup_memory()
+            
+            # Record initial state
+            memory_before = self.monitor.get_memory_usage()
+            gpu_memory_before = self.monitor.get_gpu_memory_usage()
+            
+            # Synchronize if using CUDA
+            if TORCH_AVAILABLE and torch.cuda.is_available():
+                torch.cuda.synchronize()
+            
+            # Time the generation
+            start_time = time.perf_counter()
+            
+            generated_text = model.generate(
+                prompt, 
+                max_new_tokens=max_tokens,
+                temperature=0.0,  # Deterministic for consistent timing
+                do_sample=False
+            )
+            
+            # Synchronize if using CUDA
+            if TORCH_AVAILABLE and torch.cuda.is_available():
+                torch.cuda.synchronize()
+            
+            end_time = time.perf_counter()
+            
+            # Record final state
+            memory_after = self.monitor.get_memory_usage()
+            gpu_memory_after = self.monitor.get_gpu_memory_usage()
+            cpu_usage = self.monitor.get_cpu_usage()
+            
+            # Calculate metrics
+            latency = end_time - start_time
+            
+            # Estimate actual tokens generated (rough approximation)
+            # In a real benchmark, you'd count actual tokens using the tokenizer
+            estimated_tokens = min(len(generated_text.split()) * 1.3, max_tokens)  # Rough token estimate
+            tokens_per_second = estimated_tokens / latency if latency > 0 else 0
+            
+            memory_delta = (memory_after - memory_before) * 1024  # Convert to MB
+            gpu_memory_delta = None
+            if gpu_memory_before is not None and gpu_memory_after is not None:
+                gpu_memory_delta = (gpu_memory_after - gpu_memory_before) * 1024  # Convert to MB
+            
+            return EfficiencyMetrics(
+                latency=latency,
+                tokens_per_second=tokens_per_second,
+                memory_usage_mb=max(0, memory_delta),  # Don't report negative memory usage
+                gpu_memory_mb=gpu_memory_delta,
+                cpu_usage_percent=cpu_usage
+            )
+            
+        except Exception as e:
+            self.logger.error(f"Error during efficiency measurement: {e}")
+            return EfficiencyMetrics(
+                latency=0.0,
+                tokens_per_second=0.0,
+                memory_usage_mb=0.0,
+                error=str(e)
+            )
+    
+    def _run_warmup(self, model: ModelWrapper):
+        """Run warmup iterations to stabilize performance."""
+        self.logger.info("Running warmup iterations...")
         
-        return info
+        warmup_prompt = self.sample_prompts[0]
+        warmup_length = min(self.output_lengths)
+        
+        for i in range(self.warmup_runs):
+            try:
+                _ = model.generate(warmup_prompt, max_new_tokens=warmup_length, temperature=0.0)
+                self._cleanup_memory()
+            except Exception as e:
+                self.logger.warning(f"Warmup iteration {i+1} failed: {e}")
+        
+        self.logger.info("Warmup complete")
     
     def evaluate(self, model: ModelWrapper) -> Dict[str, Any]:
         """
@@ -74,55 +292,87 @@ class EfficiencyBenchmark:
         """
         self.logger.info(f"Evaluating efficiency metrics for {model.model_name}")
         
+        # Run warmup
+        self._run_warmup(model)
+        
         results = {
             "latency": {},
-            "memory_usage": {},
             "tokens_per_second": {},
-            "system_info": self.system_info
+            "memory_usage": {},
+            "gpu_memory_usage": {},
+            "cpu_usage": {},
+            "system_info": self.system_info,
+            "config": {
+                "measurement_runs": self.measurement_runs,
+                "warmup_runs": self.warmup_runs,
+                "num_prompts": len(self.sample_prompts)
+            }
         }
         
-        # Warm up the model
-        self.logger.info("Warming up model...")
-        _ = model.generate(self.sample_prompts[0], max_new_tokens=10)
-        
-        # Test latency at different output lengths
+        # Test each output length
         for length in self.output_lengths:
             self.logger.info(f"Testing with output length: {length}")
-            latencies = []
-            memory_usages = []
             
-            for prompt in self.sample_prompts:
-                # Record memory before
-                mem_before = psutil.Process().memory_info().rss / (1024 ** 3)  # GB
-                
-                # Record start time
-                start_time = time.time()
-                
-                # Generate text
-                _ = model.generate(prompt, max_new_tokens=length)
-                
-                # Record end time
-                end_time = time.time()
-                
-                # Record memory after
-                mem_after = psutil.Process().memory_info().rss / (1024 ** 3)  # GB
-                memory_usage = mem_after - mem_before
-                
-                latency = end_time - start_time
-                latencies.append(latency)
-                memory_usages.append(memory_usage)
-                
-                self.logger.debug(f"Prompt: '{prompt[:20]}...', Latency: {latency:.4f}s, Memory: {memory_usage:.4f}GB")
+            # Collect measurements across multiple runs and prompts
+            all_metrics = []
             
-            # Calculate average metrics
-            avg_latency = sum(latencies) / len(latencies)
-            avg_memory = sum(memory_usages) / len(memory_usages)
-            tokens_per_sec = length / avg_latency
+            for run in range(self.measurement_runs):
+                for prompt_idx, prompt in enumerate(self.sample_prompts):
+                    self.logger.debug(f"Run {run+1}/{self.measurement_runs}, Prompt {prompt_idx+1}/{len(self.sample_prompts)}")
+                    
+                    metrics = self._measure_single_generation(model, prompt, length)
+                    if metrics.error is None:
+                        all_metrics.append(metrics)
+                    else:
+                        self.logger.warning(f"Measurement failed: {metrics.error}")
             
-            results["latency"][f"tokens_{length}"] = avg_latency
-            results["memory_usage"][f"tokens_{length}"] = avg_memory
-            results["tokens_per_second"][f"tokens_{length}"] = tokens_per_sec
+            if not all_metrics:
+                self.logger.error(f"No successful measurements for length {length}")
+                continue
             
-            self.logger.info(f"Length {length}: Avg Latency: {avg_latency:.4f}s, Avg Memory: {avg_memory:.4f}GB, Tokens/sec: {tokens_per_sec:.2f}")
+            # Calculate averages
+            avg_latency = sum(m.latency for m in all_metrics) / len(all_metrics)
+            avg_tps = sum(m.tokens_per_second for m in all_metrics) / len(all_metrics)
+            avg_memory = sum(m.memory_usage_mb for m in all_metrics) / len(all_metrics)
+            
+            # GPU memory (if available)
+            gpu_memory_values = [m.gpu_memory_mb for m in all_metrics if m.gpu_memory_mb is not None]
+            avg_gpu_memory = sum(gpu_memory_values) / len(gpu_memory_values) if gpu_memory_values else None
+            
+            # CPU usage (if available)
+            cpu_usage_values = [m.cpu_usage_percent for m in all_metrics if m.cpu_usage_percent is not None]
+            avg_cpu_usage = sum(cpu_usage_values) / len(cpu_usage_values) if cpu_usage_values else None
+            
+            # Store results
+            length_key = f"tokens_{length}"
+            results["latency"][length_key] = avg_latency
+            results["tokens_per_second"][length_key] = avg_tps
+            results["memory_usage"][length_key] = avg_memory / 1024  # Convert to GB
+            
+            if avg_gpu_memory is not None:
+                results["gpu_memory_usage"][length_key] = avg_gpu_memory / 1024  # Convert to GB
+            
+            if avg_cpu_usage is not None:
+                results["cpu_usage"][length_key] = avg_cpu_usage
+            
+            self.logger.info(
+                f"Length {length}: "
+                f"Latency: {avg_latency:.3f}s, "
+                f"TPS: {avg_tps:.1f}, "
+                f"Memory: {avg_memory/1024:.3f}GB"
+            )
         
+        # Add summary statistics
+        if results["latency"]:
+            all_latencies = list(results["latency"].values())
+            all_tps = list(results["tokens_per_second"].values())
+            
+            results["summary"] = {
+                "avg_latency": sum(all_latencies) / len(all_latencies),
+                "avg_tokens_per_second": sum(all_tps) / len(all_tps),
+                "total_measurements": len(all_metrics),
+                "successful_measurements": len([m for m in all_metrics if m.error is None])
+            }
+        
+        self.logger.info(f"Efficiency evaluation complete for {model.model_name}")
         return results
