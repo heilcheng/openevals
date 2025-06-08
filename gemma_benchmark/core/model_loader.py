@@ -4,65 +4,109 @@ Model loading utilities for Gemma and other models.
 
 import os
 import logging
+import torch
 from typing import Dict, Any, Optional, List, Union
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 class ModelWrapper:
     """Base wrapper class for language models."""
     
-    def __init__(self, model_name: str):
-        """
-        Initialize the model wrapper.
-        
-        Args:
-            model_name: Name of the model
-        """
+    def __init__(self, model_name: str, model=None, tokenizer=None):
         self.model_name = model_name
+        self.model = model
+        self.tokenizer = tokenizer
         self.logger = logging.getLogger(f"gemma_benchmark.model.{model_name}")
     
     def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs) -> str:
-        """
-        Generate text based on a prompt.
+        """Generate text based on a prompt."""
+        if self.model is None or self.tokenizer is None:
+            raise ValueError("Model or tokenizer not loaded")
         
-        Args:
-            prompt: Input text prompt
-            max_new_tokens: Maximum number of tokens to generate
-            **kwargs: Additional generation parameters
-            
-        Returns:
-            Generated text
-        """
-        raise NotImplementedError("Subclasses must implement generate()")
+        # Tokenize input
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        if torch.cuda.is_available():
+            inputs = {k: v.cuda() for k, v in inputs.items()}
+        
+        # Generate
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                temperature=0.7,
+                pad_token_id=self.tokenizer.eos_token_id,
+                **kwargs
+            )
+        
+        # Decode only the new tokens
+        new_tokens = outputs[0][inputs['input_ids'].shape[1]:]
+        generated_text = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
+        return generated_text.strip()
 
 class GemmaLoader:
     """Loader for Gemma models."""
     
     def __init__(self):
-        """Initialize the Gemma model loader."""
         self.logger = logging.getLogger("gemma_benchmark.model_loader.gemma")
     
     def load_model(self, 
                   size: str = "2b", 
                   variant: str = "it", 
-                  cache_dir: Optional[str] = None) -> ModelWrapper:
+                  cache_dir: Optional[str] = None,
+                  quantization: bool = True) -> ModelWrapper:
         """
-        Load a Gemma model.
+        Load a Gemma model from HuggingFace.
         
         Args:
-            size: Model size ("1b", "2b", "7b", etc.)
-            variant: Model variant ("it" for instruction-tuned, "pt" for pretrained)
+            size: Model size ("2b", "9b", "27b")
+            variant: Model variant ("it" for instruction-tuned)
             cache_dir: Directory to cache model weights
-            
-        Returns:
-            Loaded model wrapped in a ModelWrapper
+            quantization: Whether to use 4-bit quantization
         """
-        self.logger.info(f"Loading Gemma-{size}-{variant} model")
+        # Map size to actual model names
+        model_mapping = {
+            "2b": "google/gemma-2-2b-it",
+            "9b": "google/gemma-2-9b-it", 
+            "27b": "google/gemma-2-27b-it"
+        }
+        
+        if size not in model_mapping:
+            raise ValueError(f"Unsupported Gemma size: {size}. Available: {list(model_mapping.keys())}")
+        
+        model_id = model_mapping[size]
+        self.logger.info(f"Loading {model_id}")
         
         try:
-            # In a real implementation, we would use the actual Gemma libraries
-            # But for this demo, we'll create a mock implementation
-            model = GemmaModelWrapper(f"gemma-{size}-{variant}")
-            self.logger.info(f"Successfully loaded Gemma-{size}-{variant} model")
-            return model
+            # Setup quantization if requested
+            quantization_config = None
+            if quantization:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                )
+            
+            # Load tokenizer
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_id, 
+                cache_dir=cache_dir
+            )
+            
+            # Load model
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                device_map="auto",
+                quantization_config=quantization_config,
+                torch_dtype=torch.bfloat16 if not quantization else None,
+                cache_dir=cache_dir,
+                attn_implementation="flash_attention_2" if torch.cuda.is_available() else None
+            )
+            
+            model_wrapper = ModelWrapper(f"gemma-{size}-{variant}", model, tokenizer)
+            self.logger.info(f"Successfully loaded {model_id}")
+            return model_wrapper
+            
         except Exception as e:
             self.logger.error(f"Failed to load Gemma model: {e}")
             raise
@@ -70,116 +114,38 @@ class GemmaLoader:
 class MistralLoader:
     """Loader for Mistral models."""
     
-    def __init__(self):
-        """Initialize the Mistral model loader."""
-        self.logger = logging.getLogger("gemma_benchmark.model_loader.mistral")
-    
     def load_model(self, 
                   size: str = "7b", 
                   variant: str = "instruct", 
-                  cache_dir: Optional[str] = None) -> ModelWrapper:
-        """
-        Load a Mistral model.
+                  cache_dir: Optional[str] = None,
+                  quantization: bool = True) -> ModelWrapper:
+        """Load a Mistral model."""
+        model_id = f"mistralai/Mistral-{size.upper()}-Instruct-v0.3"
         
-        Args:
-            size: Model size ("7b", etc.)
-            variant: Model variant ("instruct", "base", etc.)
-            cache_dir: Directory to cache model weights
-            
-        Returns:
-            Loaded model wrapped in a ModelWrapper
-        """
-        self.logger.info(f"Loading Mistral-{size}-{variant} model")
+        self.logger = logging.getLogger("gemma_benchmark.model_loader.mistral")
+        self.logger.info(f"Loading {model_id}")
         
         try:
-            # Mock implementation for demonstration
-            model = MistralModelWrapper(f"mistral-{size}-{variant}")
-            self.logger.info(f"Successfully loaded Mistral-{size}-{variant} model")
-            return model
+            quantization_config = None
+            if quantization:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_compute_dtype=torch.bfloat16,
+                    bnb_4bit_use_double_quant=True,
+                )
+            
+            tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir)
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                device_map="auto", 
+                quantization_config=quantization_config,
+                torch_dtype=torch.bfloat16 if not quantization else None,
+                cache_dir=cache_dir
+            )
+            
+            return ModelWrapper(f"mistral-{size}-{variant}", model, tokenizer)
+            
         except Exception as e:
             self.logger.error(f"Failed to load Mistral model: {e}")
             raise
-
-class GemmaModelWrapper(ModelWrapper):
-    """Wrapper for Gemma models."""
-    
-    def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs) -> str:
-        """
-        Generate text using a Gemma model.
-        
-        Args:
-            prompt: Input text prompt
-            max_new_tokens: Maximum number of tokens to generate
-            **kwargs: Additional generation parameters
-            
-        Returns:
-            Generated text
-        """
-        self.logger.debug(f"Generating with prompt: {prompt[:50]}...")
-        
-        # In a real implementation, we would call the actual model
-        # This is just a mock for demonstration purposes
-        
-        # Mock responses for MMLU-like prompts (detecting A, B, C, D answers)
-        if "multiple choice" in prompt.lower() and "Answer:" in prompt:
-            # For demo purposes, simulate some basic pattern recognition
-            if "capital of France" in prompt:
-                return "A"  # Assuming A is Paris
-            elif "largest planet" in prompt:
-                return "C"  # Assuming C is Jupiter
-            elif "author of Hamlet" in prompt:
-                return "B"  # Assuming B is Shakespeare
-            else:
-                # Return a mock answer based on last character of prompt
-                options = ["A", "B", "C", "D"]
-                return options[hash(prompt) % 4]
-        else:
-            # Generic response for non-MMLU prompts
-            mock_responses = {
-                "Explain the theory of relativity": "Einstein's theory of relativity describes how gravity affects spacetime...",
-                "Write a short story": "Once upon a time in a digital realm...",
-                "Summarize": "The key points are...",
-            }
-            
-            # Find a matching key or return generic response
-            for key, response in mock_responses.items():
-                if key.lower() in prompt.lower():
-                    return response
-            
-            return "This is a mock response from the Gemma model wrapper for demonstration purposes."
-
-class MistralModelWrapper(ModelWrapper):
-    """Wrapper for Mistral models."""
-    
-    def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs) -> str:
-        """
-        Generate text using a Mistral model.
-        
-        Args:
-            prompt: Input text prompt
-            max_new_tokens: Maximum number of tokens to generate
-            **kwargs: Additional generation parameters
-            
-        Returns:
-            Generated text
-        """
-        self.logger.debug(f"Generating with prompt: {prompt[:50]}...")
-        
-        # Mock implementation similar to Gemma but with slightly different responses
-        # to show differences in benchmark results
-        
-        # Mock responses for MMLU-like prompts
-        if "multiple choice" in prompt.lower() and "Answer:" in prompt:
-            if "capital of France" in prompt:
-                return "A"  # Assuming A is Paris
-            elif "largest planet" in prompt:
-                return "C"  # Assuming C is Jupiter
-            elif "author of Hamlet" in prompt:
-                return "B"  # Assuming B is Shakespeare
-            else:
-                # Return a mock answer with a slightly different distribution
-                options = ["A", "B", "C", "D"]
-                return options[(hash(prompt) + 1) % 4]
-        else:
-            # Generic response
-            return "This is a mock response from the Mistral model wrapper for demonstration purposes."

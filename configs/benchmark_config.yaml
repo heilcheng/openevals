@@ -1,4 +1,4 @@
-# Benchmark Configuration
+# Production Benchmark Configuration
 
 # Model configurations
 models:
@@ -7,23 +7,20 @@ models:
     size: 2b
     variant: it
     cache_dir: cache/models
-  gemma-7b:
+    quantization: true
+  
+  gemma-9b:
     type: gemma
-    size: 7b
+    size: 9b
     variant: it
     cache_dir: cache/models
-  mistral-7b:
-    type: mistral
-    size: 7b
-    variant: instruct
-    cache_dir: cache/models
+    quantization: true
 
 # Task configurations
 tasks:
   mmlu:
     type: mmlu
-    data_path: data/mmlu
-    subset: all  # Can be "all" or a specific subject
+    subset: all  # Can be "all" or specific subject like "mathematics"
     shot_count: 5
   
   efficiency:
@@ -41,7 +38,8 @@ output:
   visualize: true
   dashboard: false
 
-# Hardware configuration - for reporting
+# Hardware configuration
 hardware:
   device: auto  # auto, cuda, cpu, mps
-  precision: float16  # float16, float32, int8
+  precision: bfloat16  # bfloat16, float16, float32
+  quantization: true
