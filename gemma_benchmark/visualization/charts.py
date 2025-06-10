@@ -1,5 +1,5 @@
 """
-Advanced visualization system for benchmark results with publication-ready charts.
+Advanced visualization system for benchmark results with charts.
 
 This module provides comprehensive visualization capabilities for language model
 benchmarking results, including performance comparisons, efficiency analysis,
@@ -50,13 +50,44 @@ except ImportError:
     HAS_SCIPY = False
     logging.getLogger(__name__).warning("scipy not available - statistical tests disabled")
 
-# Set style and backend
-if HAS_SEABORN:
-    plt.style.use('seaborn-v0_8-whitegrid')
-    sns.set_palette("husl")
-else:
-    plt.style.use('default')
+# Set style with proper fallbacks
+def set_plotting_style():
+    """Set matplotlib style with proper fallbacks."""
+    available_styles = plt.style.available
+    
+    # Try different style options in order of preference
+    style_options = [
+        'seaborn-v0_8-whitegrid',
+        'seaborn-whitegrid',
+        'seaborn',
+        'ggplot',
+        'default'
+    ]
+    
+    style_set = False
+    for style in style_options:
+        if style in available_styles:
+            try:
+                plt.style.use(style)
+                style_set = True
+                break
+            except:
+                continue
+    
+    if not style_set:
+        plt.style.use('default')
+    
+    # Apply seaborn if available
+    if HAS_SEABORN:
+        try:
+            sns.set_palette("husl")
+        except:
+            pass
 
+# Apply the style
+set_plotting_style()
+
+# Set default parameters
 plt.rcParams.update({
     'figure.figsize': (12, 8),
     'font.size': 11,
@@ -71,6 +102,7 @@ plt.rcParams.update({
     'axes.spines.top': False,
     'axes.spines.right': False,
 })
+
 
 class BenchmarkVisualizer:
     """
@@ -120,7 +152,7 @@ class BenchmarkVisualizer:
         if self.style == "publication":
             plt.rcParams.update({
                 'font.family': 'serif',
-                'font.serif': ['Times New Roman', 'Times'],
+                'font.serif': ['DejaVu Serif', 'Times New Roman', 'Times'],
                 'figure.dpi': 300,
                 'savefig.dpi': 300,
                 'savefig.format': 'pdf',
@@ -129,7 +161,7 @@ class BenchmarkVisualizer:
         elif self.style == "presentation":
             plt.rcParams.update({
                 'font.family': 'sans-serif',
-                'font.sans-serif': ['Arial', 'Helvetica'],
+                'font.sans-serif': ['DejaVu Sans', 'Arial', 'Helvetica'],
                 'figure.figsize': (16, 10),
                 'font.size': 14,
                 'axes.titlesize': 18,
@@ -235,9 +267,15 @@ class BenchmarkVisualizer:
         for i, model in enumerate(models):
             for j, task in enumerate(tasks):
                 if (task in results[model] and 
-                    'overall' in results[model][task] and
-                    'accuracy' in results[model][task]['overall']):
-                    data[i, j] = results[model][task]['overall']['accuracy']
+                    'overall' in results[model][task]):
+                    # Handle different metric names
+                    overall = results[model][task]['overall']
+                    if 'accuracy' in overall:
+                        data[i, j] = overall['accuracy']
+                    elif 'pass_at_1' in overall:
+                        data[i, j] = overall['pass_at_1']
+                    elif 'truthfulness_rate' in overall:
+                        data[i, j] = overall['truthfulness_rate']
         
         # Create heatmap
         im = ax.imshow(data, cmap='RdYlGn', aspect='auto', vmin=0, vmax=1)
@@ -269,10 +307,15 @@ class BenchmarkVisualizer:
         for model in models:
             scores = []
             for task in tasks:
-                if (task in results[model] and 
-                    'overall' in results[model][task] and
-                    'accuracy' in results[model][task]['overall']):
-                    scores.append(results[model][task]['overall']['accuracy'])
+                if task in results[model] and 'overall' in results[model][task]:
+                    overall = results[model][task]['overall']
+                    # Handle different metric names
+                    if 'accuracy' in overall:
+                        scores.append(overall['accuracy'])
+                    elif 'pass_at_1' in overall:
+                        scores.append(overall['pass_at_1'])
+                    elif 'truthfulness_rate' in overall:
+                        scores.append(overall['truthfulness_rate'])
             avg_scores[model] = np.mean(scores) if scores else 0
         
         # Sort by performance
@@ -294,7 +337,7 @@ class BenchmarkVisualizer:
         for i, (bar, score) in enumerate(zip(bars, scores_sorted)):
             ax.text(score + 0.01, bar.get_y() + bar.get_height()/2, 
                    f'{score:.3f}', va='center', fontsize=10)
-    
+
     def _create_task_difficulty(self, ax: plt.Axes, results: Dict, tasks: List[str]):
         """Create task difficulty analysis."""
         # Calculate average performance per task

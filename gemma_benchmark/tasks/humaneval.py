@@ -6,12 +6,21 @@ import logging
 import subprocess
 import tempfile
 import os
-import signal
+import sys
+import platform
 from typing import Dict, List, Any, Optional
 from datasets import load_dataset
 from contextlib import contextmanager
+import threading
+import multiprocessing
 
 from ..core.model_loader import ModelWrapper
+
+
+class TimeoutError(Exception):
+    """Custom timeout error for cross-platform compatibility."""
+    pass
+
 
 class HumanevalBenchmark:
     """
@@ -34,6 +43,11 @@ class HumanevalBenchmark:
         self.temperature = config.get("temperature", 0.2)
         self.max_new_tokens = config.get("max_new_tokens", 256)
         self.data = None
+        
+        # Platform-specific setup
+        self.is_windows = platform.system() == "Windows"
+        if self.is_windows:
+            self.logger.info("Running on Windows - using threading for timeout")
     
     def load_data(self) -> List[Dict[str, Any]]:
         """
@@ -88,20 +102,40 @@ class HumanevalBenchmark:
     
     @contextmanager
     def time_limit(self, seconds):
-        """Context manager for executing code with a time limit."""
-        def signal_handler(signum, frame):
-            raise TimeoutError("Code execution timed out")
-        
-        # Set the signal handler and a alarm
-        old_handler = signal.signal(signal.SIGALRM, signal_handler)
-        signal.alarm(seconds)
-        
-        try:
-            yield
-        finally:
-            # Restore the old signal handler and cancel the alarm
-            signal.alarm(0)
-            signal.signal(signal.SIGALRM, old_handler)
+        """Context manager for executing code with a time limit (cross-platform)."""
+        if self.is_windows:
+            # Windows doesn't have SIGALRM, use threading approach
+            timer = None
+            timed_out = threading.Event()
+            
+            def timeout_handler():
+                timed_out.set()
+            
+            timer = threading.Timer(seconds, timeout_handler)
+            timer.start()
+            
+            try:
+                yield timed_out
+            finally:
+                if timer:
+                    timer.cancel()
+        else:
+            # Unix-based systems - use signal
+            import signal
+            
+            def signal_handler(signum, frame):
+                raise TimeoutError("Code execution timed out")
+            
+            # Set the signal handler and alarm
+            old_handler = signal.signal(signal.SIGALRM, signal_handler)
+            signal.alarm(seconds)
+            
+            try:
+                yield None
+            finally:
+                # Restore the old signal handler and cancel the alarm
+                signal.alarm(0)
+                signal.signal(signal.SIGALRM, old_handler)
     
     def extract_code(self, response: str, prompt: str) -> str:
         """
@@ -140,45 +174,88 @@ class HumanevalBenchmark:
         Returns:
             True if all tests pass, False otherwise
         """
-        if any(dangerous in code.lower() for dangerous in [
-            'import os', 'import subprocess', 'open(', '__import__',
-            'eval(', 'exec(', 'compile('
-        ]):
-            self.logger.warning("Potentially dangerous code detected, skipping")
-            return False
+        # Security check - don't run potentially dangerous code
+        dangerous_patterns = [
+            'import os', 'import subprocess', 'import sys', '__import__',
+            'eval(', 'exec(', 'compile(', 'open(', 'file(',
+            'input(', 'raw_input(', 'globals(', 'locals('
+        ]
+        
+        code_lower = code.lower()
+        for pattern in dangerous_patterns:
+            if pattern in code_lower:
+                self.logger.warning(f"Potentially dangerous code pattern detected: {pattern}")
+                return False
         
         try:
             # Create a temporary file with the code
             with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
                 # Add necessary imports
-                f.write("from typing import List, Dict, Tuple, Optional, Any\n")
+                f.write("from typing import List, Dict, Tuple, Optional, Any, Union, Set\n")
                 f.write("import math\n")
                 f.write("import re\n")
-                f.write("import sys\n\n")
+                f.write("import collections\n")
+                f.write("import itertools\n\n")
                 f.write(code)
                 f.write("\n\n")
                 f.write(test_code)
                 temp_file = f.name
             
             try:
-                # Execute the code with timeout
-                with self.time_limit(self.timeout):
-                    result = subprocess.run(
-                        [sys.executable, temp_file],
-                        capture_output=True,
-                        text=True,
-                        timeout=self.timeout
-                    )
-                
-                # Check if execution was successful
-                if result.returncode == 0:
-                    return True
+                if self.is_windows:
+                    # Windows timeout handling with threading
+                    with self.time_limit(self.timeout) as timed_out:
+                        # Run the code
+                        process = subprocess.Popen(
+                            [sys.executable, temp_file],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        
+                        # Wait for completion or timeout
+                        try:
+                            stdout, stderr = process.communicate(timeout=self.timeout)
+                            returncode = process.returncode
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            stdout, stderr = process.communicate()
+                            self.logger.debug("Code execution timed out (subprocess)")
+                            return False
+                        
+                        # Check if timed out via threading
+                        if timed_out and timed_out.is_set():
+                            self.logger.debug("Code execution timed out (threading)")
+                            return False
+                        
+                        # Check if execution was successful
+                        if returncode == 0:
+                            return True
+                        else:
+                            self.logger.debug(f"Code execution failed: {stderr}")
+                            return False
                 else:
-                    self.logger.debug(f"Code execution failed: {result.stderr}")
-                    return False
+                    # Unix timeout handling with signal
+                    with self.time_limit(self.timeout):
+                        result = subprocess.run(
+                            [sys.executable, temp_file],
+                            capture_output=True,
+                            text=True,
+                            timeout=self.timeout
+                        )
+                        
+                        # Check if execution was successful
+                        if result.returncode == 0:
+                            return True
+                        else:
+                            self.logger.debug(f"Code execution failed: {result.stderr}")
+                            return False
                     
             except (subprocess.TimeoutExpired, TimeoutError):
                 self.logger.debug("Code execution timed out")
+                return False
+            except Exception as e:
+                self.logger.debug(f"Error during code execution: {e}")
                 return False
             
         except Exception as e:
@@ -188,23 +265,31 @@ class HumanevalBenchmark:
         finally:
             # Clean up temporary file
             try:
-                os.unlink(temp_file)
+                if 'temp_file' in locals():
+                    os.unlink(temp_file)
             except:
                 pass
     
-    def evaluate(self, model: ModelWrapper, num_samples: int = 164) -> Dict[str, Any]:
+    def evaluate(self, model: ModelWrapper, num_samples: int = None) -> Dict[str, Any]:
         """
         Evaluate the model on HumanEval benchmark.
         
         Args:
             model: The model to evaluate
-            num_samples: Number of problems to evaluate
+            num_samples: Number of problems to evaluate (None for all)
             
         Returns:
             Dictionary containing evaluation results
         """
         if self.data is None:
             self.data = self.load_data()
+        
+        # Use num_samples from config if not provided
+        if num_samples is None:
+            num_samples = self.config.get("num_samples", len(self.data))
+        
+        # Limit to available data
+        num_samples = min(num_samples, len(self.data))
         
         self.logger.info(f"Evaluating HumanEval with {num_samples} problems")
         
@@ -240,7 +325,7 @@ class HumanevalBenchmark:
                     if len(failed_examples) < 5:
                         failed_examples.append({
                             "task_id": problem["task_id"],
-                            "prompt": problem["prompt"],
+                            "prompt": problem["prompt"][:200] + "..." if len(problem["prompt"]) > 200 else problem["prompt"],
                             "generated_code": response[:200] + "..." if len(response) > 200 else response,
                             "issue": "Failed test cases"
                         })
@@ -250,7 +335,7 @@ class HumanevalBenchmark:
                 if len(failed_examples) < 5:
                     failed_examples.append({
                         "task_id": problem["task_id"],
-                        "prompt": problem["prompt"],
+                        "prompt": problem["prompt"][:200] + "..." if len(problem["prompt"]) > 200 else problem["prompt"],
                         "generated_code": "ERROR",
                         "issue": str(e)
                     })

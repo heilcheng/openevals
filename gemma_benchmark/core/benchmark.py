@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, Union
 
 from ..auth import ensure_authenticated, get_authentication_status
-from ..utils.config_validation import validate_config
 
 
 class BenchmarkError(Exception):
@@ -53,7 +52,7 @@ class GemmaBenchmark:
         # Validate configuration if requested
         if validate_config_schema:
             try:
-                from gemma_benchmark.utils.config_validation import validate_config
+                from ..utils.config_validation import validate_config
                 validate_config(self.config)
                 self.logger.info("Configuration validation passed")    
             except ImportError:
@@ -76,8 +75,10 @@ class GemmaBenchmark:
         
         # Check authentication status
         auth_status = get_authentication_status()
-        if auth_status["authenticated"]:
-            self.logger.info(f"Authenticated as: {auth_status['username']}")
+        if auth_status.get("authenticated"):
+            user_info = auth_status.get("user_info", {})
+            username = user_info.get("name", "Unknown") if user_info else "Unknown"
+            self.logger.info(f"Authenticated as: {username}")
         else:
             self.logger.warning("Not authenticated with HuggingFace - model access may be limited")
     
@@ -158,7 +159,7 @@ class GemmaBenchmark:
                 elif model_type == "mistral":
                     loader_class = getattr(module, "MistralLoader")
                 elif model_type == "huggingface":
-                    loader_class = getattr(module, "HuggingFaceLoader")
+                    loader_class = getattr(module, "HuggingFaceGenericLoader")
                 else:
                     raise ValueError(f"Unsupported model type: {model_type}")
                 
@@ -473,7 +474,13 @@ class GemmaBenchmark:
             f.write(f"Config: {self.config_path}\n")
             f.write(f"Start: {self.evaluation_metadata['start_time']}\n")
             f.write(f"End: {self.evaluation_metadata['end_time']}\n")
-            f.write(f"Success Rate: {(self.evaluation_metadata['successful_evaluations'] / (self.evaluation_metadata['successful_evaluations'] + self.evaluation_metadata['failed_evaluations']) * 100):.1f}%\n\n")
+            
+            total_evals = self.evaluation_metadata['successful_evaluations'] + self.evaluation_metadata['failed_evaluations']
+            if total_evals > 0:
+                success_rate = (self.evaluation_metadata['successful_evaluations'] / total_evals) * 100
+                f.write(f"Success Rate: {success_rate:.1f}%\n\n")
+            else:
+                f.write("Success Rate: N/A (no evaluations completed)\n\n")
             
             # Results
             f.write("=== RESULTS ===\n\n")

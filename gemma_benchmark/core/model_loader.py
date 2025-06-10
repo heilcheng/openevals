@@ -49,6 +49,11 @@ class HuggingFaceModelWrapper(AbstractModelWrapper):
         self.logger = logging.getLogger(f"gemma_benchmark.model.{model_name}")
         self.load_kwargs = kwargs
         
+        # Initialize model and tokenizer attributes
+        self._model = None
+        self._tokenizer = None
+        self._device = None
+        
         # Load the model immediately
         self._load_model_and_tokenizer(**kwargs)
     
@@ -277,6 +282,10 @@ class HuggingFaceModelWrapper(AbstractModelWrapper):
             return [self.generate(prompt, **kwargs) for prompt in prompts]
 
 
+# Create backward compatibility alias
+ModelWrapper = HuggingFaceModelWrapper
+
+
 class GemmaLoader:
     """Loader for Gemma models without circular dependencies."""
     
@@ -322,7 +331,8 @@ class GemmaLoader:
     def _verify_model_access(self, model_id: str):
         """Verify access to Gemma model."""
         try:
-            from ..auth import get_auth_manager
+            # Use the auth manager without circular import
+            from gemma_benchmark.auth import get_auth_manager
             auth_manager = get_auth_manager()
             
             access_result = auth_manager.check_model_access(model_id)
@@ -510,3 +520,17 @@ def cleanup_models():
     """Clean up all loaded models."""
     manager = get_model_manager()
     manager.cleanup_all_models()
+
+
+# Export all necessary classes
+__all__ = [
+    'ModelWrapper',  # Backward compatibility
+    'HuggingFaceModelWrapper',
+    'GemmaLoader',
+    'MistralLoader',
+    'HuggingFaceGenericLoader',
+    'ModelManager',
+    'get_model_manager',
+    'load_model',
+    'cleanup_models'
+]
