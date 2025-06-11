@@ -9,7 +9,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from huggingface_hub.utils import HfHubHTTPError
 
 # Core interfaces for model wrapping
-from .interfaces import ModelWrapper, ModelInterface
+from .interfaces import ModelWrapper
 
 
 # --- Custom Exception for Model Loading ---

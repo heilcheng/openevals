@@ -63,6 +63,61 @@ class ModelInterface(Protocol):
         """Clean up model resources."""
         ...
 
+class ModelWrapper:
+    """Concrete wrapper class for language models."""
+    
+    def __init__(self, model, tokenizer, model_name: str):
+        self.model = model
+        self.tokenizer = tokenizer
+        self.model_name = model_name
+        self._device = None
+        
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+        if hasattr(model, 'device'):
+            self._device = model.device
+        else:
+            self._device = torch.device('cpu')
+    
+    @property
+    def model_info(self) -> ModelInfo:
+        info = ModelInfo(
+            name=self.model_name,
+            type=self.model.config.model_type if hasattr(self.model, 'config') else 'unknown',
+            device=str(self._device),
+        )
+        return info
+    
+    def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs) -> str:
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True)
+        
+        if self._device:
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=self.tokenizer.eos_token_id,
+                **kwargs
+            )
+        
+        generated_ids = outputs[0][inputs['input_ids'].shape[1]:]
+        return self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+    
+    def generate_batch(self, prompts: List[str], **kwargs) -> List[str]:
+        return [self.generate(prompt, **kwargs) for prompt in prompts]
+    
+    def cleanup(self) -> None:
+        if hasattr(self, 'model'):
+            del self.model
+        if hasattr(self, 'tokenizer'):
+            del self.tokenizer
+        
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 class TokenizerInterface(Protocol):
     """Protocol for tokenizer functionality."""
