@@ -522,7 +522,6 @@ If you use this benchmarking suite in your research, please cite:
 
 ```bibtex
 @software{gemma_benchmarking_suite,
-<<<<<<< HEAD
   author = {Hailey Cheng},
   title = {Gemma Benchmarking Suite: Evaluation Framework},
   year = {2025},
