@@ -9,13 +9,43 @@ import argparse
 import logging
 import datetime
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+import pkgutil
+import importlib
 
 # Add parent directory to path to make imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from gemma_benchmark.core.benchmark import GemmaBenchmark
 from gemma_benchmark.visualization.charts import ChartGenerator
+# Import for task registration
+from gemma_benchmark.core.interfaces import BenchmarkFactory, AbstractBenchmark
+
+def register_available_tasks():
+    """
+    Dynamically discover and register all benchmark tasks.
+    This allows new tasks to be added to the tasks folder without
+    changing this script.
+    """
+    logger = logging.getLogger("gemma_benchmark")
+    logger.info("Registering available benchmark tasks...")
+    import gemma_benchmark.tasks
+
+    package = gemma_benchmark.tasks
+    for _, module_name, _ in pkgutil.walk_packages(package.__path__, package.__name__ + '.'):
+        try:
+            module = importlib.import_module(module_name)
+            for attribute_name in dir(module):
+                attribute = getattr(module, attribute_name)
+                # Register class if it's a subclass of AbstractBenchmark
+                if (isinstance(attribute, type) and
+                        issubclass(attribute, AbstractBenchmark) and
+                        attribute is not AbstractBenchmark):
+                    
+                    task_type = attribute.__name__.replace('Benchmark', '').lower()
+                    BenchmarkFactory.register_benchmark(task_type, attribute)
+                    logger.debug(f"Registered benchmark '{task_type}'")
+        except Exception as e:
+            logger.warning(f"Could not register tasks from module {module_name}: {e}")
 
 def setup_logging(log_level: str = "INFO") -> None:
     """
@@ -88,6 +118,9 @@ def main() -> None:
     args = parse_args()
     setup_logging(args.log_level)
     
+    # Register tasks before doing anything else
+    register_available_tasks()
+    
     logger = logging.getLogger("gemma_benchmark")
     
     # Create timestamp for results
@@ -106,10 +139,10 @@ def main() -> None:
     try:
         benchmark = GemmaBenchmark(args.config)
         
-        # Load models
+        # Load models - this call now works as intended
         benchmark.load_models(args.models)
         
-        # Load tasks
+        # Load tasks - this call now works as intended
         benchmark.load_tasks(args.tasks)
         
         # Run benchmarks

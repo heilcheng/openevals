@@ -4,10 +4,13 @@ Core orchestration logic for the Gemma Benchmarking Suite.
 
 import logging
 import yaml
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 
 # Import the configuration validation tools
 from gemma_benchmark.utils.config_validation import validate_config_file, ConfigurationError
+# Import the factory and manager to be used directly
+from gemma_benchmark.core.interfaces import BenchmarkFactory
+from gemma_benchmark.core.model_loader import get_model_manager
 
 # Define a custom exception for evaluation errors
 class EvaluationError(Exception):
@@ -62,48 +65,65 @@ class GemmaBenchmark:
             self.logger.error(f"An unexpected error occurred while loading configuration: {e}")
             raise
 
-    def load_models(self, model_loader_map: Dict[str, Any]):
+    def load_models(self, model_names: Optional[List[str]] = None):
         """
-        Load models as specified in the configuration.
+        Load models as specified in the configuration using the ModelManager.
         
         Args:
-            model_loader_map: A mapping from model type to a model loader class.
+            model_names: An optional list of specific models to load.
+                         If None, all models from the config will be loaded.
         """
         self.logger.info("Loading models...")
+        model_manager = get_model_manager()
         model_configs = self.config.get("models", {})
-        
-        for model_name, config in model_configs.items():
-            model_type = config.get("type")
-            if model_type in model_loader_map:
-                try:
-                    loader = model_loader_map[model_type](config)
-                    self.models[model_name] = loader.load_model()
-                    self.logger.info(f"Loaded model '{model_name}' of type '{model_type}'")
-                except Exception as e:
-                    self.logger.error(f"Failed to load model '{model_name}': {e}")
-            else:
-                self.logger.warning(f"No loader available for model type '{model_type}'")
 
-    def load_tasks(self, task_map: Dict[str, Any]):
+        # If model_names is provided, use it to filter. Otherwise, load all.
+        models_to_load = model_names if model_names else list(model_configs.keys())
+        
+        for model_name in models_to_load:
+            if model_name not in model_configs:
+                self.logger.warning(f"Model '{model_name}' requested but not found in configuration. Skipping.")
+                continue
+
+            config = model_configs[model_name]
+            try:
+                # Use the ModelManager to load the model
+                self.models[model_name] = model_manager.load_model(model_name, config)
+                self.logger.info(f"Successfully loaded model '{model_name}'")
+            except Exception as e:
+                self.logger.error(f"Failed to load model '{model_name}': {e}", exc_info=True)
+
+    def load_tasks(self, task_names: Optional[List[str]] = None):
         """
-        Load tasks as specified in the configuration.
+        Load tasks as specified in the configuration using the BenchmarkFactory.
         
         Args:
-            task_map: A mapping from task type to a benchmark task class.
+            task_names: An optional list of specific tasks to load.
+                        If None, all tasks from the config will be loaded.
         """
         self.logger.info("Loading tasks...")
         task_configs = self.config.get("tasks", {})
-        
-        for task_name, config in task_configs.items():
+
+        # If task_names is provided, use it to filter. Otherwise, load all.
+        tasks_to_load = task_names if task_names else list(task_configs.keys())
+
+        for task_name in tasks_to_load:
+            if task_name not in task_configs:
+                self.logger.warning(f"Task '{task_name}' requested but not found in configuration. Skipping.")
+                continue
+            
+            config = task_configs[task_name]
             task_type = config.get("type")
-            if task_type in task_map:
-                try:
-                    self.tasks[task_name] = task_map[task_type](config)
-                    self.logger.info(f"Loaded task '{task_name}' of type '{task_type}'")
-                except Exception as e:
-                    self.logger.error(f"Failed to load task '{task_name}': {e}")
-            else:
-                self.logger.warning(f"No implementation available for task type '{task_type}'")
+            if not task_type:
+                self.logger.error(f"Task '{task_name}' in config is missing a 'type'. Skipping.")
+                continue
+                
+            try:
+                # Use the factory to create a benchmark instance
+                self.tasks[task_name] = BenchmarkFactory.create_benchmark(task_type, config)
+                self.logger.info(f"Successfully loaded task '{task_name}' of type '{task_type}'")
+            except Exception as e:
+                self.logger.error(f"Failed to load task '{task_name}': {e}", exc_info=True)
 
     def run_benchmarks(self) -> Dict[str, Any]:
         """

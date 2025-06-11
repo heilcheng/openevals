@@ -1,8 +1,5 @@
 """
-Fixed model loading utilities without circular dependencies.
-
-This module provides model loading functionality using dependency injection
-and interface-based design to prevent circular import issues.
+This module provides model loading functionality using dependency injection.
 """
 
 import os
@@ -287,11 +284,12 @@ ModelWrapper = HuggingFaceModelWrapper
 
 
 class GemmaLoader:
-    """Loader for Gemma models without circular dependencies."""
+    """Loader for Gemma models, supporting both legacy and Gemma 2."""
     
     def __init__(self):
         self.logger = logging.getLogger("gemma_benchmark.model_loader.gemma")
-        self.supported_sizes = ["2b", "9b", "27b"]
+        # Add support for the legacy "7b" model size
+        self.supported_sizes = ["2b", "7b", "9b", "27b"]
         self.supported_variants = ["it"]  # instruction-tuned
     
     def supports_model_type(self, model_type: str) -> bool:
@@ -299,7 +297,7 @@ class GemmaLoader:
         return model_type.lower() == "gemma"
     
     def load_model(self, **kwargs) -> ModelInterface:
-        """Load a Gemma model."""
+        """Load a Gemma model, handling both legacy and Gemma 2 versions."""
         # Extract Gemma-specific parameters
         size = kwargs.get('size', '2b')
         variant = kwargs.get('variant', 'it')
@@ -311,8 +309,15 @@ class GemmaLoader:
         if variant not in self.supported_variants:
             raise ModelLoadingError(f"Unsupported Gemma variant: {variant}. Supported: {self.supported_variants}")
         
-        # Map to actual model ID
-        model_id = f"google/gemma-2-{size}-{variant}"
+        # Differentiate between legacy and Gemma 2 models to build the correct model ID.
+        legacy_sizes = ["7b"]
+        
+        if size in legacy_sizes:
+            # Legacy model format: e.g., "google/gemma-7b-it"
+            model_id = f"google/gemma-{size}-{variant}"
+        else:
+            # Gemma 2 model format: e.g., "google/gemma-2-9b-it"
+            model_id = f"google/gemma-2-{size}-{variant}"
         
         self.logger.info(f"Loading Gemma model: {model_id}")
         
@@ -332,8 +337,8 @@ class GemmaLoader:
         """Verify access to Gemma model."""
         try:
             # Use the auth manager without circular import
-            from gemma_benchmark.auth import get_auth_manager
-            auth_manager = get_auth_manager()
+            from gemma_benchmark.auth import AuthManager
+            auth_manager = AuthManager()
             
             access_result = auth_manager.check_model_access(model_id)
             if not access_result.has_access:

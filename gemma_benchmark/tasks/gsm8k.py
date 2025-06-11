@@ -1,210 +1,124 @@
 """
-GSM8K (Grade School Math 8K) benchmark implementation.
+Benchmark for the GSM8K dataset.
 """
 
-import logging
 import re
-from typing import Dict, List, Any, Optional
-from datasets import load_dataset
 import random
+from typing import Dict, Any, List, Optional, Union
+from datasets import load_dataset, Dataset
 
-from ..core.model_loader import ModelWrapper
+# Core benchmark interfaces
+from gemma_benchmark.core.interfaces import AbstractBenchmark, ModelInterface, BenchmarkResult
 
-class Gsm8kBenchmark:
-    """
-    Implementation of the GSM8K benchmark.
-    
-    GSM8K is a dataset of 8.5K high quality linguistically diverse grade school math word problems.
-    The dataset is designed to evaluate the mathematical reasoning capabilities of language models.
-    """
+# Utility for parsing numerical answers
+from gemma_benchmark.utils.metrics import extract_numerical_answer, is_exact_match
+
+
+FEW_SHOT_PROMPT = """
+A grade school math problem.
+**Question:**
+{question}
+**Answer:**
+{answer}
+""".strip()
+
+FINAL_PROMPT = """
+{few_shot_examples}
+A grade school math problem.
+**Question:**
+{question}
+**Answer:**
+""".strip()
+
+
+class GSM8KBenchmark(AbstractBenchmark):
+    """Benchmark for the GSM8K dataset."""
     
     def __init__(self, config: Dict[str, Any]):
-        """
-        Initialize the GSM8K benchmark.
+        super().__init__(config)
+        self.shot_count = self.config.get('shot_count', 8)
         
-        Args:
-            config: Configuration dictionary for the benchmark
-        """
-        self.logger = logging.getLogger("gemma_benchmark.tasks.gsm8k")
-        self.config = config
-        self.shot_count = config.get("shot_count", 8)
-        self.use_cot = config.get("use_chain_of_thought", True)
-        self.data = None
-    
-    def load_data(self) -> List[Dict[str, Any]]:
-        """
-        Load GSM8K dataset from HuggingFace.
+        # Initialize a dedicated random number generator for reproducibility
+        self.random_seed = self.config.get('random_seed', 42)
+        self.rng = random.Random(self.random_seed)
         
-        Returns:
-            List of GSM8K questions and answers
-        """
-        self.logger.info("Loading GSM8K data from HuggingFace...")
-        
-        try:
-            dataset = load_dataset("gsm8k", "main")
-            
-            # Process train and test sets
-            train_data = list(dataset["train"])
-            test_data = list(dataset["test"])
-            
-            # Extract numerical answers for few-shot examples
-            for item in train_data:
-                item["numerical_answer"] = self._extract_numerical_answer(item["answer"])
-            
-            # Attach few-shot examples to test data
-            for item in test_data:
-                item["examples"] = random.sample(train_data, self.shot_count)
-            
-            self.logger.info(f"Loaded {len(test_data)} test examples and {len(train_data)} training examples.")
-            return test_data
-            
-        except Exception as e:
-            self.logger.error(f"Failed to load GSM8K data: {e}")
-            return [] # Return empty list on failure
-            
-    def _extract_numerical_answer(self, answer_text: str) -> float:
-        """
-        Extract the numerical answer from GSM8K answer text with improved logic.
-        
-        This improved version:
-        - Prioritizes numbers after #### markers
-        - Looks for numbers after answer indicators
-        - Falls back to last number only if no clear answer markers found
-        
-        Args:
-            answer_text: The full answer text containing reasoning and final answer
-            
-        Returns:
-            The numerical answer as a float
-        """
-        # GSM8K answers typically end with "#### [number]"
-        pattern = r"####\s*([0-9,]+(?:\.[0-9]+)?)"
-        match = re.search(pattern, answer_text)
-        
-        if match:
-            # Remove commas and convert to float
-            number_str = match.group(1).replace(",", "")
-            try:
-                return float(number_str)
-            except ValueError:
-                pass
-        
-        # Look for answer indicators followed by numbers
-        answer_patterns = [
-            r"answer is[:\s]+([0-9,]+(?:\.[0-9]+)?)",
-            r"answer:[:\s]*([0-9,]+(?:\.[0-9]+)?)",
-            r"= ([0-9,]+(?:\.[0-9]+)?)\s*$",  # Equals sign at end
-            r"total[:\s]+([0-9,]+(?:\.[0-9]+)?)",
-            r"result[:\s]+([0-9,]+(?:\.[0-9]+)?)",
-            r"therefore[,\s]+([0-9,]+(?:\.[0-9]+)?)",
-            r"so[,\s]+([0-9,]+(?:\.[0-9]+)?)\s*$"  # "So" at end
-        ]
-        
-        for pattern in answer_patterns:
-            matches = re.findall(pattern, answer_text.lower())
-            if matches:
-                # Take the last match (closest to end)
-                try:
-                    return float(matches[-1].replace(",", ""))
-                except ValueError:
-                    continue
-        
-        # Look for boxed answers (sometimes used in math)
-        boxed_pattern = r"\\boxed\{([0-9,]+(?:\.[0-9]+)?)\}"
-        boxed_match = re.search(boxed_pattern, answer_text)
-        if boxed_match:
-            try:
-                return float(boxed_match.group(1).replace(",", ""))
-            except ValueError:
-                pass
-        
-        # Fallback: look for the last standalone number
-        all_numbers = re.findall(r"([0-9,]+(?:\.[0-9]+)?)", answer_text)
-        if all_numbers:
-            try:
-                return float(all_numbers[-1].replace(",", ""))
-            except ValueError:
-                pass
-        
-        self.logger.warning(f"Could not extract numerical answer from: {answer_text[:100]}...")
-        return float('nan')
+        if self.shot_count < 0 or self.shot_count > 8:
+            raise ValueError("Number of few-shot examples must be between 0 and 8 for GSM8K.")
 
-    def format_prompt(self, question: str, examples: List[Dict[str, Any]]) -> str:
-        """Format a prompt for GSM8K evaluation."""
-        prompt = "Solve the following grade school math problems.\n\n"
+    def load_data(self) -> Dataset:
+        """Load both train and test splits of GSM8K."""
+        self.logger.info("Loading GSM8K dataset...")
+        train_data = load_dataset("gsm8k", "main", split='train')
+        test_data = load_dataset("gsm8k", "main", split='test')
         
-        for ex in examples:
-            prompt += f"Question: {ex['question']}\n"
-            if self.use_cot:
-                # Chain-of-thought prompt with full reasoning
-                prompt += f"Answer: {ex['answer']}\n\n"
-            else:
-                # Standard prompt with just the numerical answer
-                prompt += f"Answer: {ex['numerical_answer']}\n\n"
-        
-        prompt += f"Question: {question}\nAnswer:"
-        
-        if self.use_cot:
-            prompt += " (Let's think step by step)"
+        # Prepare prompts for each test item
+        prompts = []
+        for item in test_data:
+            few_shot_examples_str = ""
+            if self.shot_count > 0:
+                # Avoid using the test example itself in the few-shot selection
+                potential_shots = [s for s in train_data if s['question'] != item['question']]
+                if len(potential_shots) >= self.shot_count:
+                    # Use the seeded RNG for sampling to ensure reproducibility
+                    few_shot_examples = self.rng.sample(potential_shots, self.shot_count)
+                    few_shot_examples_str = "\n".join([
+                        FEW_SHOT_PROMPT.format(**ex) for ex in few_shot_examples
+                    ]) + "\n"
             
-        return prompt
+            final_prompt = FINAL_PROMPT.format(
+                few_shot_examples=few_shot_examples_str,
+                question=item['question']
+            )
+            prompts.append({
+                "prompt": final_prompt,
+                "ground_truth": item['answer']
+            })
+            
+        return Dataset.from_list(prompts)
 
-    def evaluate(self, model: ModelWrapper) -> Dict[str, Any]:
-        """Evaluate the model on GSM8K."""
-        if self.data is None:
-            self.data = self.load_data()
-            if not self.data:
-                return {"error": "Failed to load data."}
+    def _evaluate_impl(self, model: ModelInterface) -> Dict[str, Any]:
+        """Implementation-specific evaluation logic for GSM8K."""
+        if self._data is None:
+            self._data = self.load_data()
+            
+        prompts = [item['prompt'] for item in self._data]
+        ground_truths = [item['ground_truth'] for item in self._data]
         
+        # Generate responses in batches
+        self.logger.info(f"Generating responses for {len(prompts)} prompts...")
+        responses = model.generate_batch(prompts, max_new_tokens=256)
+        
+        # Calculate accuracy
         correct = 0
-        total = len(self.data)
-        failed_examples = []
+        results_details = []
         
-        for item in self.data:
-            question = item["question"]
-            true_answer_text = item["answer"]
-            true_numerical_answer = self._extract_numerical_answer(true_answer_text)
+        for i, (prompt, response, truth) in enumerate(zip(prompts, responses, ground_truths)):
+            # Extract numerical answers from both the ground truth and the model's response
+            true_answer = extract_numerical_answer(truth)
+            model_answer = extract_numerical_answer(response)
             
-            prompt = self.format_prompt(question, item["examples"])
+            match = is_exact_match(model_answer, true_answer)
+            if match:
+                correct += 1
             
-            try:
-                response = model.generate(prompt, max_new_tokens=256)
-                predicted_numerical_answer = self._extract_numerical_answer(response)
-                
-                # Check for correctness (allowing for float comparison issues)
-                if abs(predicted_numerical_answer - true_numerical_answer) < 1e-5:
-                    correct += 1
-                else:
-                    if len(failed_examples) < 10:
-                        failed_examples.append({
-                            "question": question,
-                            "true_answer": true_numerical_answer,
-                            "predicted_answer": predicted_numerical_answer,
-                            "model_response": response
-                        })
-
-            except Exception as e:
-                self.logger.error(f"Error evaluating example: {e}")
-                if len(failed_examples) < 10:
-                     failed_examples.append({
-                        "question": question,
-                        "error": str(e)
-                    })
-
-        accuracy = correct / total if total > 0 else 0.0
+            results_details.append({
+                "index": i,
+                "prompt": prompt,
+                "response": response,
+                "ground_truth": truth,
+                "model_answer": model_answer,
+                "true_answer": true_answer,
+                "correct": match
+            })
+            
+        accuracy = (correct / len(prompts)) * 100
+        self.logger.info(f"GSM8K Accuracy: {accuracy:.2f}%")
         
-        results = {
+        return {
             "overall": {
-                "correct": correct,
-                "total": total,
-                "accuracy": accuracy
+                "accuracy": accuracy,
+                "total_questions": len(prompts),
+                "correct_answers": correct
             },
-            "config": {
-                "shot_count": self.shot_count,
-                "use_chain_of_thought": self.use_cot
-            },
-            "failed_examples": failed_examples
+            "details": results_details
         }
-        
-        self.logger.info(f"GSM8K evaluation complete. Accuracy: {accuracy:.4f}")
-        return results

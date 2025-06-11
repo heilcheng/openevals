@@ -1,45 +1,100 @@
-# Production Benchmark Configuration
+# Example configuration for the Gemma Benchmark Suite
+#
+# This file defines which models to test, which benchmarks to run,
+# and how to configure the evaluation and output.
 
-# Model configurations
+# -----------------
+# Model Definitions
+# -----------------
+# Defines the models to be benchmarked.
+# Each key is a unique name for the model configuration.
 models:
   gemma-2b:
-    type: gemma
-    size: 2b
-    variant: it
-    cache_dir: cache/models
+    # `type` specifies the model family. Supported: "gemma", "mistral", "huggingface"
+    type: "gemma"
+    # `size` is specific to the model type (e.g., "2b", "9b" for gemma)
+    size: "2b"
+    # `variant` specifies the model version (e.g., "it" for instruction-tuned)
+    variant: "it"
+    # `quantization` enables 4-bit quantization to save memory
     quantization: true
-  
-  gemma-9b:
-    type: gemma
-    size: 9b
-    variant: it
-    cache_dir: cache/models
-    quantization: true
+    # `cache_dir` is an optional directory to store downloaded models
+    cache_dir: "cache/models"
 
-# Task configurations
+  gemma-9b:
+    type: "gemma"
+    size: "9b"
+    variant: "it"
+    quantization: true
+    # `max_memory` allows distributing large models across multiple GPUs
+    max_memory:
+      0: "15GB"
+      1: "15GB"
+
+# -----------------
+# Task Definitions
+# -----------------
+# Defines the benchmarks to run on the models.
+# Each key is a unique name for the task configuration.
 tasks:
   mmlu:
-    type: mmlu
-    subset: all  # Can be "all" or specific subject like "mathematics"
+    # `type` specifies the benchmark task. Supported: "mmlu", "gsm8k", etc.
+    type: "mmlu"
+    # `subset` allows running on a specific MMLU subject area or "all"
+    subset: "mathematics"
+    # `shot_count` is the number of few-shot examples to include in the prompt
     shot_count: 5
-  
+    # `temperature` controls the randomness of the model's output
+    temperature: 0.0
+
+  gsm8k:
+    type: "gsm8k"
+    shot_count: 5
+    # `use_chain_of_thought` enables a more detailed prompting style
+    use_chain_of_thought: true
+
   efficiency:
-    type: efficiency
+    type: "efficiency"
+    # `sample_prompts` are used to measure performance metrics
     sample_prompts:
-      - "Explain the theory of relativity"
-      - "Write a short story about a robot who discovers emotions"
-      - "Summarize the key events of World War II"
-      - "Describe the process of photosynthesis in plants"
-    output_lengths: [128, 256, 512, 1024]
+      - "Explain quantum computing in simple terms"
+      - "Write a short Python function to find prime numbers"
+      - "Summarize the plot of 'The Great Gatsby'"
+    # `output_lengths` tests performance at different generation lengths
+    output_lengths: [128, 256, 512]
 
-# Output configuration
+# --------------------
+# Evaluation Settings
+# --------------------
+# Global settings for the evaluation process.
+evaluation:
+  # `runs` specifies how many times to run each benchmark for statistical robustness
+  runs: 1
+  # `batch_size` for model inference. "auto" will determine a reasonable size.
+  batch_size: "auto"
+  # `statistical_tests` enables significance testing between model results
+  statistical_tests: false
+
+# -----------------
+# Output Settings
+# -----------------
+# Defines how and where to save the results.
 output:
-  path: results
+  # `path` is the root directory for all results
+  path: "results"
+  # `visualize` enables automatic generation of charts and plots
   visualize: true
-  dashboard: false
+  # `export_formats` specifies the file types for the results summary
+  export_formats: ["yaml", "json"]
 
-# Hardware configuration
+# ------------------
+# Hardware Settings
+# ------------------
+# Advanced settings to control hardware usage.
 hardware:
-  device: auto  # auto, cuda, cpu, mps
-  precision: bfloat16  # bfloat16, float16, float32
+  # `device` can be "auto", "cuda", "cpu", "mps"
+  device: "auto"
+  # `precision` for model weights. "bfloat16" is recommended for modern GPUs.
+  precision: "bfloat16"
+  # `quantization` can be globally enabled/disabled here
   quantization: true
