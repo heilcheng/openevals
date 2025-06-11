@@ -2,21 +2,19 @@
 
 import pytest
 from unittest.mock import Mock, patch
-import tempfile
 import sys
 import platform
 
 # Mock the datasets library if it's not available
 try:
-    import datasets
+    import datasets  # noqa: F401
 except ImportError:
     sys.modules["datasets"] = Mock()
 
 from gemma_benchmark.tasks.mmlu import MMLUBenchmark
-from gemma_benchmark.tasks.arc import ArcBenchmark
 from gemma_benchmark.tasks.efficiency import EfficiencyBenchmark
 from gemma_benchmark.tasks.gsm8k import GSM8KBenchmark
-from gemma_benchmark.tasks.humaneval import HumanevalBenchmark
+from gemma_benchmark.tasks.humaneval import HumanEvalBenchmark
 from gemma_benchmark.core.model_loader import ModelWrapper
 
 
@@ -120,16 +118,16 @@ class TestGSM8KBenchmark:
     def test_init(self):
         """Test GSM8K benchmark initialization."""
         config = {"shot_count": 3, "use_chain_of_thought": True}
-        benchmark = Gsm8kBenchmark(config)
+        benchmark = GSM8KBenchmark(config)
         assert benchmark.shot_count == 3
         assert benchmark.use_cot is True
 
 
-### New Tests for Improved Coverage ###
+# New Tests for Improved Coverage
 
 
 def test_mmlu_answer_extraction_robustness():
-    """Test MMLU answer extraction with various formats by mocking the evaluation."""
+    """Test MMLU answer extraction with various formats by mocking evaluation."""
     config = {"subset": "all", "shot_count": 0}
     benchmark = MMLUBenchmark(config)
 
@@ -164,7 +162,7 @@ def test_mmlu_answer_extraction_robustness():
 
 
 def test_efficiency_token_counting():
-    """Test that efficiency benchmark uses actual token counting when available."""
+    """Test that efficiency benchmark uses actual token counting."""
     mock_model = Mock(spec=ModelWrapper)
     mock_model.model_name = "test-model"
     mock_model.generate.return_value = "This is a test response with multiple words"
@@ -172,7 +170,7 @@ def test_efficiency_token_counting():
     # Add mock tokenizer
     mock_tokenizer = Mock()
     mock_tokenizer.encode.return_value = [1, 2, 3, 4, 5, 6, 7, 8]  # 8 tokens
-    mock_model.tokenizer = mock_tokenizer  # Use the public attribute
+    mock_model.tokenizer = mock_tokenizer
 
     config = {
         "sample_prompts": ["Test"],
@@ -193,7 +191,7 @@ def test_efficiency_token_counting():
 def test_gsm8k_improved_answer_extraction():
     """Test improved GSM8K answer extraction."""
     config = {"shot_count": 0}
-    benchmark = Gsm8kBenchmark(config)
+    benchmark = GSM8KBenchmark(config)
 
     test_cases = [
         ("The calculation is 5 + 3 = 8. #### 8", 8.0),
@@ -210,12 +208,13 @@ def test_gsm8k_improved_answer_extraction():
 
 def test_humaneval_secure_code_execution():
     """Test HumanEval security improvements."""
-    # This test might be platform-specific, skip if not on unix-like system for resource check
+    # This test might be platform-specific, skip if not on unix-like
+    # system for resource check
     if platform.system() == "Windows":
         pytest.skip("Skipping resource limit tests on Windows")
 
     config = {"timeout": 5}
-    benchmark = HumanevalBenchmark(config)
+    benchmark = HumanEvalBenchmark(config)
 
     # Test dangerous code detection
     dangerous_codes = [
