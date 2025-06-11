@@ -6,6 +6,9 @@ import logging
 import yaml
 from typing import Dict, Any
 
+# Import the configuration validation tools
+from gemma_benchmark.utils.config_validation import validate_config_file, ConfigurationError
+
 # Define a custom exception for evaluation errors
 class EvaluationError(Exception):
     """Custom exception for errors during benchmark evaluation."""
@@ -41,20 +44,23 @@ class GemmaBenchmark:
         Returns:
             A dictionary containing the validated configuration.
         """
-        self.logger.info(f"Loading configuration from: {self.config_path}")
+        self.logger.info(f"Loading and validating configuration from: {self.config_path}")
         try:
-            with open(self.config_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-            # In a real implementation, this would be followed by
-            # comprehensive validation against a schema.
-            self.logger.info("Configuration loaded successfully.")
+            # Use the validation utility to load and check the config
+            validated_config = validate_config_file(self.config_path)
+            # Convert the Pydantic model to a dict for compatibility with the class
+            config_data = validated_config.model_dump()
+            self.logger.info("Configuration loaded and validated successfully.")
             return config_data
+        except ConfigurationError as e:
+            self.logger.error(f"Configuration validation failed for {self.config_path}: {e}")
+            raise
         except FileNotFoundError:
             self.logger.error(f"Configuration file not found: {self.config_path}")
             raise
-        except yaml.YAMLError as e:
-            self.logger.error(f"Error parsing YAML configuration file: {e}")
-            raise ValueError(f"Invalid YAML content in {self.config_path}") from e
+        except Exception as e:
+            self.logger.error(f"An unexpected error occurred while loading configuration: {e}")
+            raise
 
     def load_models(self, model_loader_map: Dict[str, Any]):
         """
