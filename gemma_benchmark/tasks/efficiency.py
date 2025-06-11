@@ -234,7 +234,7 @@ class EfficiencyBenchmark:
             if TORCH_AVAILABLE and torch.cuda.is_available():
                 torch.cuda.synchronize()
             
-            end__time = time.perf_counter()
+            end_time = time.perf_counter()
             
             # Record final state
             memory_after = self.monitor.get_memory_usage()

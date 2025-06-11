@@ -13,7 +13,6 @@ from gemma_benchmark.core.interfaces import AbstractBenchmark, ModelInterface, B
 # Utility for parsing numerical answers
 from gemma_benchmark.utils.metrics import extract_numerical_answer, is_exact_match
 
-
 FEW_SHOT_PROMPT = """
 A grade school math problem.
 **Question:**
