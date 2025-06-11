@@ -37,7 +37,7 @@ dependencies = [
 dev = [
     "pytest",
     "pre-commit",
-    "black",
+    "black==24.4.2",
     "isort",
     "flake8",
     "mypy",
@@ -50,3 +50,7 @@ download-data = "gemma_benchmark.scripts.download_data:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
