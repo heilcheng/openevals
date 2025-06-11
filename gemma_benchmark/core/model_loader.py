@@ -9,7 +9,8 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from huggingface_hub.utils import HfHubHTTPError
 
 # Core interfaces for model wrapping
-from .interfaces import ModelWrapper
+# FIX: Added ModelInterface to the import statement
+from .interfaces import ModelWrapper, ModelInterface
 
 
 # --- Custom Exception for Model Loading ---
@@ -24,6 +25,8 @@ class ModelLoadingError(Exception):
 
 class BaseModelLoader:
     """Abstract base class for model loaders."""
+
+
 
     def __init__(self, model_name: str, config: Dict[str, Any]):
         self.model_name = model_name
