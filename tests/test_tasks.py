@@ -15,7 +15,7 @@ except ImportError:
 from gemma_benchmark.tasks.mmlu import MMLUBenchmark
 from gemma_benchmark.tasks.arc import ArcBenchmark
 from gemma_benchmark.tasks.efficiency import EfficiencyBenchmark
-from gemma_benchmark.tasks.gsm8k import Gsm8kBenchmark
+from gemma_benchmark.tasks.gsm8k import GSM8KBenchmark
 from gemma_benchmark.tasks.humaneval import HumanevalBenchmark
 from gemma_benchmark.core.model_loader import ModelWrapper
 

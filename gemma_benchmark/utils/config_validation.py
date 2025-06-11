@@ -1,12 +1,5 @@
 """
 Comprehensive configuration validation system for the Gemma Benchmarking Suite.
-
-This module provides robust configuration validation using Pydantic with:
-- Schema validation for all configuration sections
-- Detailed error reporting with suggestions
-- Type checking and value range validation
-- Configuration file templates and examples
-- Backward compatibility support
 """
 
 import logging
@@ -17,12 +10,11 @@ from typing import Dict, Any, List, Optional, Union, Literal
 from enum import Enum
 
 try:
-    from pydantic import BaseModel, Field, validator, root_validator, ValidationError
-
+    # FIX: Import the new V2 validators
+    from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
-    # This will be a hard error if not available, so logging is sufficient.
     logging.getLogger(__name__).error(
         "Pydantic is required for this module. Please install with: pip install pydantic"
     )
@@ -30,16 +22,13 @@ except ImportError:
 
 class ConfigurationError(Exception):
     """Raised when configuration validation fails."""
-
     pass
 
 
 # --- Enums for Supported Types ---
 
-
 class ModelType(str, Enum):
     """Supported model types."""
-
     GEMMA = "gemma"
     MISTRAL = "mistral"
     LLAMA = "llama"
@@ -48,7 +37,6 @@ class ModelType(str, Enum):
 
 class TaskType(str, Enum):
     """Supported task types."""
-
     MMLU = "mmlu"
     GSM8K = "gsm8k"
     HUMANEVAL = "humaneval"
@@ -59,10 +47,8 @@ class TaskType(str, Enum):
 
 # --- Pydantic Models for Configuration Schema ---
 
-
 class FlexibleModelConfig(BaseModel):
     """Configuration for a single model."""
-
     type: str
     size: str
     variant: str = "it"
@@ -72,34 +58,35 @@ class FlexibleModelConfig(BaseModel):
     model_id: Optional[str] = None  # For HuggingFace models
     torch_dtype: Optional[str] = "bfloat16"
 
-    @validator("type")
-    def validate_type(cls, v):
-        # Allow custom types but warn if not a standard one
+    # FIX: Replaced deprecated @validator with @field_validator
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
         if v.lower() not in [m.value for m in ModelType]:
             logging.getLogger(__name__).warning(
                 f"Custom model type '{v}' used. Ensure a corresponding loader is available."
             )
         return v.lower()
 
-    @root_validator
-    def check_huggingface_model_id(cls, values):
-        model_type, model_id = values.get("type"), values.get("model_id")
-        if model_type == ModelType.HUGGINGFACE and not model_id:
+    # FIX: Replaced deprecated @root_validator with @model_validator
+    @model_validator(mode='after')
+    def check_huggingface_model_id(self) -> 'FlexibleModelConfig':
+        if self.type == ModelType.HUGGINGFACE and not self.model_id:
             raise ValueError("'model_id' is required for models of type 'huggingface'")
-        return values
+        return self
 
     class Config:
-        extra = "allow"  # Allow other fields for custom loaders
+        extra = "allow"
 
 
 class FlexibleTaskConfig(BaseModel):
     """Base configuration for a benchmark task."""
-
     type: str
 
-    @validator("type")
-    def validate_type(cls, v):
-        # Allow custom task types
+    # FIX: Replaced deprecated @validator with @field_validator
+    @field_validator("type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
         if v.lower() not in [t.value for t in TaskType]:
             logging.getLogger(__name__).warning(
                 f"Custom task type '{v}' used. Ensure a corresponding task class is registered."
@@ -107,19 +94,20 @@ class FlexibleTaskConfig(BaseModel):
         return v.lower()
 
     class Config:
-        extra = "allow"  # Allow task-specific fields
+        extra = "allow"
 
 
 class FlexibleBenchmarkConfig(BaseModel):
     """Top-level configuration schema for the entire benchmark suite."""
-
     models: Dict[str, FlexibleModelConfig]
     tasks: Dict[str, FlexibleTaskConfig]
     evaluation: Dict[str, Any] = Field(default_factory=dict)
     output: Dict[str, Any] = Field(default_factory=dict)
     hardware: Dict[str, Any] = Field(default_factory=dict)
 
-    @validator("models", "tasks")
+    # FIX: Replaced deprecated @validator with @field_validator
+    @field_validator("models", "tasks")
+    @classmethod
     def check_not_empty(cls, v, field):
         if not v:
             raise ValueError(f"'{field.name}' section cannot be empty.")
