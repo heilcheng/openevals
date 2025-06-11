@@ -8,15 +8,22 @@ import os
 from typing import Dict, Any, Optional, List
 
 # Import the configuration validation tools
-from gemma_benchmark.utils.config_validation import validate_config_file, ConfigurationError
+from gemma_benchmark.utils.config_validation import (
+    validate_config_file,
+    ConfigurationError,
+)
+
 # Import the factory and manager to be used directly
 from gemma_benchmark.core.interfaces import BenchmarkFactory
 from gemma_benchmark.core.model_loader import get_model_manager
 
+
 # Define a custom exception for evaluation errors
 class EvaluationError(Exception):
     """Custom exception for errors during benchmark evaluation."""
+
     pass
+
 
 class GemmaBenchmark:
     """
@@ -48,7 +55,9 @@ class GemmaBenchmark:
         Returns:
             A dictionary containing the validated configuration.
         """
-        self.logger.info(f"Loading and validating configuration from: {self.config_path}")
+        self.logger.info(
+            f"Loading and validating configuration from: {self.config_path}"
+        )
         try:
             # Use the validation utility to load and check the config
             validated_config = validate_config_file(self.config_path)
@@ -57,13 +66,17 @@ class GemmaBenchmark:
             self.logger.info("Configuration loaded and validated successfully.")
             return config_data
         except ConfigurationError as e:
-            self.logger.error(f"Configuration validation failed for {self.config_path}: {e}")
+            self.logger.error(
+                f"Configuration validation failed for {self.config_path}: {e}"
+            )
             raise
         except FileNotFoundError:
             self.logger.error(f"Configuration file not found: {self.config_path}")
             raise
         except Exception as e:
-            self.logger.error(f"An unexpected error occurred while loading configuration: {e}")
+            self.logger.error(
+                f"An unexpected error occurred while loading configuration: {e}"
+            )
             raise
 
     def load_models(self, model_names: Optional[List[str]] = None):
@@ -83,7 +96,9 @@ class GemmaBenchmark:
 
         for model_name in models_to_load:
             if model_name not in model_configs:
-                self.logger.warning(f"Model '{model_name}' requested but not found in configuration. Skipping.")
+                self.logger.warning(
+                    f"Model '{model_name}' requested but not found in configuration. Skipping."
+                )
                 continue
 
             config = model_configs[model_name]
@@ -92,7 +107,9 @@ class GemmaBenchmark:
                 self.models[model_name] = model_manager.load_model(model_name, config)
                 self.logger.info(f"Successfully loaded model '{model_name}'")
             except Exception as e:
-                self.logger.error(f"Failed to load model '{model_name}': {e}", exc_info=True)
+                self.logger.error(
+                    f"Failed to load model '{model_name}': {e}", exc_info=True
+                )
 
     def load_tasks(self, task_names: Optional[List[str]] = None):
         """
@@ -110,21 +127,31 @@ class GemmaBenchmark:
 
         for task_name in tasks_to_load:
             if task_name not in task_configs:
-                self.logger.warning(f"Task '{task_name}' requested but not found in configuration. Skipping.")
+                self.logger.warning(
+                    f"Task '{task_name}' requested but not found in configuration. Skipping."
+                )
                 continue
 
             config = task_configs[task_name]
             task_type = config.get("type")
             if not task_type:
-                self.logger.error(f"Task '{task_name}' in config is missing a 'type'. Skipping.")
+                self.logger.error(
+                    f"Task '{task_name}' in config is missing a 'type'. Skipping."
+                )
                 continue
 
             try:
                 # Use the factory to create a benchmark instance
-                self.tasks[task_name] = BenchmarkFactory.create_benchmark(task_type, config)
-                self.logger.info(f"Successfully loaded task '{task_name}' of type '{task_type}'")
+                self.tasks[task_name] = BenchmarkFactory.create_benchmark(
+                    task_type, config
+                )
+                self.logger.info(
+                    f"Successfully loaded task '{task_name}' of type '{task_type}'"
+                )
             except Exception as e:
-                self.logger.error(f"Failed to load task '{task_name}': {e}", exc_info=True)
+                self.logger.error(
+                    f"Failed to load task '{task_name}': {e}", exc_info=True
+                )
 
     def run_benchmarks(self) -> Dict[str, Any]:
         """
@@ -152,7 +179,9 @@ class GemmaBenchmark:
                     task_result = task.evaluate(model)
                     self.results[model_name][task_name] = task_result
                 except Exception as e:
-                    self.logger.error(f"    ERROR running task {task_name} for model {model_name}: {e}")
+                    self.logger.error(
+                        f"    ERROR running task {task_name} for model {model_name}: {e}"
+                    )
                     self.results[model_name][task_name] = {"error": str(e)}
 
         self.logger.info("All benchmark runs complete.")
@@ -176,12 +205,14 @@ class GemmaBenchmark:
                 os.makedirs(output_dir, exist_ok=True)
 
             # Write the results dictionary to the specified YAML file
-            with open(output_path, 'w', encoding='utf-8') as f:
+            with open(output_path, "w", encoding="utf-8") as f:
                 yaml.dump(self.results, f, default_flow_style=False, sort_keys=False)
 
             abs_path = os.path.abspath(output_path)
             self.logger.info(f"Successfully saved results to {abs_path}")
             return abs_path
         except Exception as e:
-            self.logger.error(f"Failed to save results to {output_path}: {e}", exc_info=True)
+            self.logger.error(
+                f"Failed to save results to {output_path}: {e}", exc_info=True
+            )
             raise
