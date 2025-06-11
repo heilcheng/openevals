@@ -22,7 +22,7 @@ from typing import Dict, Any
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gemma_benchmark.auth import setup_huggingface_auth
+from gemma_benchmark.auth import AuthManager
 from gemma_benchmark.core.benchmark import GemmaBenchmark
 from gemma_benchmark.visualization.charts import ChartGenerator
 from gemma_benchmark.utils.metrics import aggregate_results, calculate_confidence_interval
@@ -60,7 +60,7 @@ def create_advanced_config(config_path: str):
         "tasks": {
             "mmlu": {
                 "type": "mmlu",
-                "subset": "mathematics",  # Focus on math for faster evaluation
+                "subset": "mathematics",
                 "shot_count": 5
             },
             "gsm8k": {
@@ -80,7 +80,7 @@ def create_advanced_config(config_path: str):
             }
         },
         "evaluation": {
-            "runs": 2,  # Multiple runs for statistical analysis
+            "runs": 1,  # Script controls the number of runs
             "batch_size": 4,
             "statistical_tests": True,
             "confidence_level": 0.95
@@ -113,17 +113,11 @@ def run_multiple_evaluations(config_path: str, num_runs: int = 2) -> Dict[str, A
     for run_idx in range(num_runs):
         logger.info(f"Starting evaluation run {run_idx + 1}/{num_runs}")
         
-        # Initialize fresh benchmark for each run
         benchmark = GemmaBenchmark(config_path)
-        
-        # Load models and tasks
         benchmark.load_models()
         benchmark.load_tasks()
-        
-        # Run benchmarks
         results = benchmark.run_benchmarks()
         
-        # Save individual run results
         run_results_path = f"examples/advanced_results/run_{run_idx + 1}_results.yaml"
         benchmark.save_results(run_results_path)
         
@@ -139,26 +133,22 @@ def analyze_results(all_results: list) -> Dict[str, Any]:
     
     logger.info("Performing statistical analysis...")
     
-    # Extract accuracy values for each model-task combination
     analysis = {
         "summary": {},
         "statistical_significance": {},
         "confidence_intervals": {}
     }
     
-    # Get all model-task combinations
     model_task_combinations = []
     if all_results:
         for model_name in all_results[0].keys():
             for task_name in all_results[0][model_name].keys():
-                if task_name != "efficiency":  # Skip efficiency for accuracy analysis
+                if task_name != "efficiency":
                     model_task_combinations.append((model_name, task_name))
-    
-    # Analyze each combination
+
     for model_name, task_name in model_task_combinations:
         combination_key = f"{model_name}_{task_name}"
         
-        # Extract accuracies across runs
         accuracies = []
         for run_result in all_results:
             if (model_name in run_result and 
@@ -168,11 +158,9 @@ def analyze_results(all_results: list) -> Dict[str, Any]:
                 accuracies.append(accuracy)
         
         if accuracies:
-            # Calculate statistics
             mean_accuracy = np.mean(accuracies)
             std_accuracy = np.std(accuracies)
             
-            # Calculate confidence interval
             n_samples = run_result[model_name][task_name]["overall"].get("total", 100)
             ci_lower, ci_upper = calculate_confidence_interval(mean_accuracy, n_samples)
             
@@ -205,17 +193,13 @@ def compare_models(analysis: Dict[str, Any]) -> Dict[str, Any]:
         "model_strengths": {}
     }
     
-    # Group results by task
     task_results = {}
     for combo_key, stats in analysis["summary"].items():
         model_name, task_name = combo_key.split("_", 1)
-        
         if task_name not in task_results:
             task_results[task_name] = {}
-        
         task_results[task_name][model_name] = stats["mean_accuracy"]
     
-    # Rank models for each task
     for task_name, model_accuracies in task_results.items():
         sorted_models = sorted(model_accuracies.items(), 
                              key=lambda x: x[1], reverse=True)
@@ -223,15 +207,13 @@ def compare_models(analysis: Dict[str, Any]) -> Dict[str, Any]:
             {"model": model, "accuracy": acc} for model, acc in sorted_models
         ]
     
-    # Calculate task difficulty (lower average accuracy = harder)
     for task_name, model_accuracies in task_results.items():
         avg_accuracy = np.mean(list(model_accuracies.values()))
         comparison["task_difficulty"][task_name] = {
             "average_accuracy": float(avg_accuracy),
-            "difficulty_rank": None  # Will be filled after sorting
+            "difficulty_rank": None
         }
-    
-    # Rank tasks by difficulty
+
     sorted_tasks = sorted(comparison["task_difficulty"].items(),
                          key=lambda x: x[1]["average_accuracy"])
     
@@ -247,17 +229,13 @@ def generate_comprehensive_visualizations(all_results: list, analysis: Dict[str,
     
     logger.info("Generating comprehensive visualizations...")
     
-    # Use the last run's results for visualization structure
     latest_results = all_results[-1]
-    
     output_dir = "examples/advanced_results/visualizations"
     chart_generator = ChartGenerator(output_dir)
     
-    # 1. Performance heatmap
     heatmap_path = chart_generator.create_performance_heatmap(latest_results)
     logger.info(f"Generated performance heatmap: {heatmap_path}")
     
-    # 2. Task-specific model comparisons
     for task_name in ["mmlu", "gsm8k"]:
         if any(task_name in model_results for model_results in latest_results.values()):
             comparison_path = chart_generator.create_model_comparison_chart(
@@ -265,12 +243,10 @@ def generate_comprehensive_visualizations(all_results: list, analysis: Dict[str,
             )
             logger.info(f"Generated {task_name} comparison: {comparison_path}")
     
-    # 3. Efficiency comparisons
     efficiency_charts = chart_generator.create_efficiency_comparison_chart(latest_results)
     for chart_type, path in efficiency_charts.items():
         logger.info(f"Generated efficiency chart ({chart_type}): {path}")
-    
-    # 4. Subject breakdown for MMLU (if available)
+
     for model_name in latest_results.keys():
         if "mmlu" in latest_results[model_name]:
             subject_path = chart_generator.create_subject_breakdown_chart(
@@ -304,8 +280,7 @@ def save_comprehensive_report(all_results: list, analysis: Dict[str, Any],
         "model_comparison": comparison,
         "raw_results": all_results
     }
-    
-    # Save as JSON for programmatic access
+
     report_path = "examples/advanced_results/comprehensive_report.json"
     os.makedirs(os.path.dirname(report_path), exist_ok=True)
     with open(report_path, 'w') as f:
@@ -313,7 +288,6 @@ def save_comprehensive_report(all_results: list, analysis: Dict[str, Any],
     
     logger.info(f"Comprehensive report saved: {report_path}")
     
-    # Generate human-readable summary
     summary_path = "examples/advanced_results/executive_summary.md"
     generate_executive_summary(report, summary_path)
     logger.info(f"Executive summary saved: {summary_path}")
@@ -334,10 +308,8 @@ def generate_executive_summary(report: Dict[str, Any], output_path: str):
 ## Key Findings
 
 ### Model Performance Rankings
-
 """
     
-    # Add rankings for each task
     if "model_comparison" in report and "model_rankings" in report["model_comparison"]:
         for task_name, rankings in report["model_comparison"]["model_rankings"].items():
             summary_content += f"**{task_name.upper()}:**\n"
@@ -345,7 +317,6 @@ def generate_executive_summary(report: Dict[str, Any], output_path: str):
                 summary_content += f"{i+1}. {ranking['model']}: {ranking['accuracy']:.4f}\n"
             summary_content += "\n"
     
-    # Add task difficulty analysis
     if "model_comparison" in report and "task_difficulty" in report["model_comparison"]:
         summary_content += "### Task Difficulty Analysis\n\n"
         
@@ -356,13 +327,10 @@ def generate_executive_summary(report: Dict[str, Any], output_path: str):
             difficulty = "Easy" if task_info["average_accuracy"] > 0.7 else "Medium" if task_info["average_accuracy"] > 0.5 else "Hard"
             summary_content += f"- **{task_name}**: {task_info['average_accuracy']:.4f} avg accuracy ({difficulty})\n"
     
-    # Add statistical significance notes
     summary_content += "\n### Statistical Notes\n\n"
     summary_content += f"- All results based on {report['metadata']['num_runs']} independent runs\n"
     summary_content += "- Confidence intervals calculated at 95% confidence level\n"
-    summary_content += "- Results show variability across runs indicating importance of multiple evaluations\n"
     
-    # Save the summary
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as f:
         f.write(summary_content)
@@ -373,46 +341,42 @@ def main():
     setup_logging()
     logger = logging.getLogger("examples.advanced_usage")
     
-    logger.info("🚀 Starting Advanced Gemma Benchmark Example")
+    logger.info("Starting Advanced Gemma Benchmark Example")
     
-    # 1. Authentication
-    logger.info("Setting up authentication...")
-    if not setup_huggingface_auth():
-        logger.error("Authentication failed. Please set up your HF_TOKEN.")
+    logger.info("Checking for HuggingFace authentication token...")
+    if not AuthManager().get_token():
+        logger.error(
+            "Authentication failed. Please set the HF_TOKEN environment "
+            "variable or run `huggingface-cli login`."
+        )
         return
+    logger.info("HuggingFace token found.")
     
-    # 2. Create advanced configuration
     config_path = "examples/advanced_config.yaml"
     logger.info("Creating advanced configuration...")
     create_advanced_config(config_path)
     
     try:
-        # 3. Run multiple evaluation rounds
         logger.info("Running multiple evaluation rounds...")
         all_results = run_multiple_evaluations(config_path, num_runs=2)
         
-        # 4. Statistical analysis
         logger.info("Performing statistical analysis...")
         analysis = analyze_results(all_results)
         
-        # 5. Model comparison
         logger.info("Comparing models...")
         comparison = compare_models(analysis)
         
-        # 6. Generate visualizations
         generate_comprehensive_visualizations(all_results, analysis)
         
-        # 7. Save comprehensive report
         save_comprehensive_report(all_results, analysis, comparison)
         
-        # 8. Display key findings
         display_key_findings(analysis, comparison)
         
-        logger.info("✅ Advanced benchmark analysis completed successfully!")
-        logger.info("📊 Check 'examples/advanced_results/' for detailed reports and visualizations")
+        logger.info("Advanced benchmark analysis completed successfully!")
+        logger.info("Check 'examples/advanced_results/' for detailed reports and visualizations")
         
     except Exception as e:
-        logger.error(f"❌ Advanced benchmark failed: {e}")
+        logger.error(f"Advanced benchmark failed: {e}")
         raise
 
 
@@ -424,32 +388,27 @@ def display_key_findings(analysis: Dict[str, Any], comparison: Dict[str, Any]):
     logger.info("KEY FINDINGS")
     logger.info("="*60)
     
-    # Model rankings
     if "model_rankings" in comparison:
-        logger.info("\n🏆 MODEL RANKINGS BY TASK:")
+        logger.info("\nMODEL RANKINGS BY TASK:")
         for task_name, rankings in comparison["model_rankings"].items():
-            logger.info(f"\n  📋 {task_name.upper()}:")
+            logger.info(f"\n  {task_name.upper()}:")
             for i, ranking in enumerate(rankings):
-                medal = "🥇" if i == 0 else "🥈" if i == 1 else "🥉"
-                logger.info(f"    {medal} {ranking['model']}: {ranking['accuracy']:.4f}")
-    
-    # Task difficulty
+                logger.info(f"    {i+1}. {ranking['model']}: {ranking['accuracy']:.4f}")
+
     if "task_difficulty" in comparison:
-        logger.info("\n📊 TASK DIFFICULTY RANKING:")
+        logger.info("\nTASK DIFFICULTY RANKING:")
         difficulty_items = list(comparison["task_difficulty"].items())
         difficulty_items.sort(key=lambda x: x[1]["difficulty_rank"])
         
         for task_name, task_info in difficulty_items:
-            difficulty_icon = "🟢" if task_info["average_accuracy"] > 0.7 else "🟡" if task_info["average_accuracy"] > 0.5 else "🔴"
-            logger.info(f"    {difficulty_icon} {task_name}: {task_info['average_accuracy']:.4f} avg accuracy")
-    
-    # Statistical reliability
+            logger.info(f"    {task_name}: {task_info['average_accuracy']:.4f} avg accuracy")
+
     if "summary" in analysis:
-        logger.info("\n📈 STATISTICAL RELIABILITY:")
+        logger.info("\nSTATISTICAL RELIABILITY:")
         for combo_key, stats in analysis["summary"].items():
             model_name, task_name = combo_key.split("_", 1)
             reliability = "High" if stats["std_accuracy"] < 0.02 else "Medium" if stats["std_accuracy"] < 0.05 else "Low"
-            logger.info(f"    {model_name} on {task_name}: σ={stats['std_accuracy']:.4f} ({reliability} reliability)")
+            logger.info(f"    {model_name} on {task_name}: std_dev={stats['std_accuracy']:.4f} ({reliability} reliability)")
 
 
 if __name__ == "__main__":

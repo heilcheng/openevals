@@ -17,7 +17,7 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gemma_benchmark.auth import setup_huggingface_auth
+from gemma_benchmark.auth import AuthManager
 from gemma_benchmark.core.benchmark import GemmaBenchmark
 from gemma_benchmark.visualization.charts import ChartGenerator
 
@@ -35,13 +35,17 @@ def main():
     setup_logging()
     logger = logging.getLogger("examples.basic_usage")
     
-    logger.info("🚀 Starting Gemma Benchmark Example")
+    logger.info("Starting Gemma Benchmark Example")
     
-    # 1. Authentication Setup
-    logger.info("Setting up HuggingFace authentication...")
-    if not setup_huggingface_auth():
-        logger.error("Authentication failed. Please set up your HF_TOKEN.")
+    # 1. Authentication
+    logger.info("Checking for HuggingFace authentication token...")
+    if not AuthManager().get_token():
+        logger.error(
+            "Authentication failed. Please set the HF_TOKEN environment "
+            "variable or run `huggingface-cli login`."
+        )
         return
+    logger.info("HuggingFace token found.")
     
     # 2. Create a simple configuration
     config_path = "examples/simple_config.yaml"
@@ -56,10 +60,10 @@ def main():
         
         # 4. Load models and tasks
         logger.info("Loading models...")
-        benchmark.load_models(["gemma-2b"])  # Start with smallest model
+        benchmark.load_models(["gemma-2b"])
         
         logger.info("Loading tasks...")
-        benchmark.load_tasks(["efficiency"])  # Start with quick task
+        benchmark.load_tasks(["efficiency"])
         
         # 5. Run benchmarks
         logger.info("Running benchmarks...")
@@ -75,7 +79,6 @@ def main():
         output_dir = os.path.dirname(results_path)
         chart_generator = ChartGenerator(os.path.join(output_dir, "charts"))
         
-        # Create efficiency charts
         efficiency_charts = chart_generator.create_efficiency_comparison_chart(results)
         for chart_type, path in efficiency_charts.items():
             logger.info(f"Generated {chart_type} chart: {path}")
@@ -83,10 +86,10 @@ def main():
         # 8. Display summary
         display_results_summary(results)
         
-        logger.info("✅ Benchmark completed successfully!")
+        logger.info("Benchmark completed successfully!")
         
     except Exception as e:
-        logger.error(f"❌ Benchmark failed: {e}")
+        logger.error(f"Benchmark failed: {e}")
         raise
 
 
@@ -140,38 +143,36 @@ def display_results_summary(results):
     logger.info("="*50)
     
     for model_name, model_results in results.items():
-        logger.info(f"\n📊 Model: {model_name}")
+        logger.info(f"\nModel: {model_name}")
         
         for task_name, task_results in model_results.items():
-            logger.info(f"  🎯 Task: {task_name}")
+            logger.info(f"  Task: {task_name}")
             
             if task_name == "efficiency":
-                # Display efficiency metrics
                 if "tokens_per_second" in task_results:
-                    logger.info("    ⚡ Performance:")
+                    logger.info("    Performance:")
                     for length, tps in task_results["tokens_per_second"].items():
                         logger.info(f"      {length}: {tps:.2f} tokens/sec")
                 
                 if "latency" in task_results:
-                    logger.info("    ⏱️  Latency:")
+                    logger.info("    Latency:")
                     for length, latency in task_results["latency"].items():
                         logger.info(f"      {length}: {latency:.3f} seconds")
                         
                 if "system_info" in task_results:
                     sys_info = task_results["system_info"]
-                    logger.info(f"    💻 System: {sys_info.get('os', 'Unknown')} | "
+                    logger.info(f"    System: {sys_info.get('os', 'Unknown')} | "
                               f"CPU: {sys_info.get('cpu_count', 'Unknown')} cores | "
                               f"RAM: {sys_info.get('memory_total', 'Unknown'):.1f}GB")
                     
                     if sys_info.get("cuda_available"):
                         gpu_info = sys_info.get("gpu_name", ["Unknown"])
-                        logger.info(f"    🚀 GPU: {gpu_info[0] if gpu_info else 'Unknown'}")
+                        logger.info(f"    GPU: {gpu_info[0] if gpu_info else 'Unknown'}")
                         
             else:
-                # Display accuracy metrics
                 if "overall" in task_results and "accuracy" in task_results["overall"]:
                     accuracy = task_results["overall"]["accuracy"]
-                    logger.info(f"    📈 Accuracy: {accuracy:.4f}")
+                    logger.info(f"    Accuracy: {accuracy:.4f}")
 
 
 if __name__ == "__main__":
