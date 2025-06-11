@@ -11,7 +11,14 @@ from enum import Enum
 
 try:
     # FIX: Import the new V2 validators
-    from pydantic import BaseModel, Field, field_validator, model_validator, ValidationError
+    from pydantic import (
+        BaseModel,
+        Field,
+        field_validator,
+        model_validator,
+        ValidationError,
+    )
+
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
@@ -22,13 +29,16 @@ except ImportError:
 
 class ConfigurationError(Exception):
     """Raised when configuration validation fails."""
+
     pass
 
 
 # --- Enums for Supported Types ---
 
+
 class ModelType(str, Enum):
     """Supported model types."""
+
     GEMMA = "gemma"
     MISTRAL = "mistral"
     LLAMA = "llama"
@@ -37,6 +47,7 @@ class ModelType(str, Enum):
 
 class TaskType(str, Enum):
     """Supported task types."""
+
     MMLU = "mmlu"
     GSM8K = "gsm8k"
     HUMANEVAL = "humaneval"
@@ -47,8 +58,10 @@ class TaskType(str, Enum):
 
 # --- Pydantic Models for Configuration Schema ---
 
+
 class FlexibleModelConfig(BaseModel):
     """Configuration for a single model."""
+
     type: str
     size: str
     variant: str = "it"
@@ -69,8 +82,8 @@ class FlexibleModelConfig(BaseModel):
         return v.lower()
 
     # FIX: Replaced deprecated @root_validator with @model_validator
-    @model_validator(mode='after')
-    def check_huggingface_model_id(self) -> 'FlexibleModelConfig':
+    @model_validator(mode="after")
+    def check_huggingface_model_id(self) -> "FlexibleModelConfig":
         if self.type == ModelType.HUGGINGFACE and not self.model_id:
             raise ValueError("'model_id' is required for models of type 'huggingface'")
         return self
@@ -81,6 +94,7 @@ class FlexibleModelConfig(BaseModel):
 
 class FlexibleTaskConfig(BaseModel):
     """Base configuration for a benchmark task."""
+
     type: str
 
     # FIX: Replaced deprecated @validator with @field_validator
@@ -99,6 +113,7 @@ class FlexibleTaskConfig(BaseModel):
 
 class FlexibleBenchmarkConfig(BaseModel):
     """Top-level configuration schema for the entire benchmark suite."""
+
     models: Dict[str, FlexibleModelConfig]
     tasks: Dict[str, FlexibleTaskConfig]
     evaluation: Dict[str, Any] = Field(default_factory=dict)
