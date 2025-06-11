@@ -1,56 +1,62 @@
 """
-Metrics calculation utilities for benchmarking.
+Core metrics and evaluation utilities for the benchmarking suite.
 """
 
-import math
-import numpy as np
-from typing import List, Dict, Any, Optional, Tuple, Union
+import re
+from typing import List
 
-def calculate_accuracy(correct: int, total: int) -> float:
+def anls(prediction: str, ground_truths: List[str]) -> float:
     """
-    Calculate simple accuracy metric.
+    Average Normalized Levenshtein Similarity (ANLS) for document VQA tasks.
+    
+    This is a common metric for evaluating OCR-related tasks where the
+    exact string match is too rigid.
     
     Args:
-        correct: Number of correct predictions
-        total: Total number of predictions
+        prediction: The predicted text from the model.
+        ground_truths: A list of acceptable ground truth strings.
         
     Returns:
-        Accuracy as a float between 0 and 1
+        The ANLS score between the prediction and the best matching ground truth.
     """
-    return correct / total if total > 0 else 0.0
-
-def calculate_f1_score(precision: float, recall: float) -> float:
-    """
-    Calculate F1 score from precision and recall.
+    # Implementation of ANLS would go here
+    # This is a placeholder for a more complex implementation.
     
-    Args:
-        precision: Precision value
-        recall: Recall value
-        
-    Returns:
-        F1 score as a float between 0 and 1
-    """
-    return 2 * (precision * recall) / (precision + recall) if precision + recall > 0 else 0.0
-
-def calculate_pass_at_k(n_samples: int, n_correct: int, k: int) -> float:
-    """
-    Calculate pass@k for code evaluation tasks.
-    
-    Args:
-        n_samples: Number of samples
-        n_correct: Number of correct samples
-        k: K value
-        
-    Returns:
-        pass@k metric as a float between 0 and 1
-    """
-    if n_samples == 0:
+    if not ground_truths:
         return 0.0
-    return 1.0 - math.comb(n_samples - n_correct, k) / math.comb(n_samples, k)
+        
+    prediction_lower = prediction.lower()
+    
+    # Find the ground truth with the highest similarity
+    max_similarity = 0.0
+    for gt in ground_truths:
+        gt_lower = gt.lower()
+        
+        # Simple similarity metric (Jaccard index as a placeholder)
+        pred_tokens = set(prediction_lower.split())
+        gt_tokens = set(gt_lower.split())
+        
+        intersection = len(pred_tokens.intersection(gt_tokens))
+        union = len(pred_tokens.union(gt_tokens))
+        
+        if union == 0:
+            similarity = 1.0 if prediction_lower == gt_lower else 0.0
+        else:
+            similarity = intersection / union
+            
+        if similarity > max_similarity:
+            max_similarity = similarity
+            
+    return max_similarity
 
 def extract_answer(text: str) -> float:
     """
-    Extract numerical answer from text for math reasoning tasks.
+    Extract numerical answer from text for math reasoning tasks with improved logic.
+    
+    This improved version:
+    - Prioritizes answers after specific markers (####, answer:, etc.)
+    - Handles multiple answer formats
+    - Falls back to last number only when no clear markers found
     
     Args:
         text: Text containing a numerical answer
@@ -58,143 +64,89 @@ def extract_answer(text: str) -> float:
     Returns:
         Extracted number or NaN if no number found
     """
-    # Simple implementation - in a real benchmark this would be more sophisticated
     try:
-        # Find the last number in the text
-        words = text.replace(',', '').split()
-        for word in reversed(words):
-            try:
-                return float(word)
-            except ValueError:
-                continue
+        # Look for GSM8K style answers first
+        gsm8k_pattern = r"####\s*([0-9,]+(?:\.[0-9]+)?)"
+        match = re.search(gsm8k_pattern, text)
+        if match:
+            return float(match.group(1).replace(',', ''))
+        
+        # Look for explicit answer markers
+        answer_patterns = [
+            r"answer is[:\s]+([0-9,]+(?:\.[0-9]+)?)",
+            r"answer:[:\s]*([0-9,]+(?:\.[0-9]+)?)",
+            r"= ([0-9,]+(?:\.[0-9]+)?)\s*$",
+            r"total[:\s]+([0-9,]+(?:\.[0-9]+)?)",
+            r"result[:\s]+([0-9,]+(?:\.[0-9]+)?)"
+        ]
+        
+        text_lower = text.lower()
+        for pattern in answer_patterns:
+            matches = re.findall(pattern, text_lower)
+            if matches:
+                return float(matches[-1].replace(',', ''))
+        
+        # Look for boxed answers
+        boxed_pattern = r"\\boxed\{([0-9,]+(?:\.[0-9]+)?)\}"
+        boxed_match = re.search(boxed_pattern, text)
+        if boxed_match:
+            return float(boxed_match.group(1).replace(',', ''))
+        
+        # Check last sentence for answer indicators
+        sentences = text.strip().split('.')
+        if sentences:
+            last_sentence = sentences[-1].lower()
+            if any(word in last_sentence for word in ['answer', 'total', 'result', 'therefore']):
+                numbers = re.findall(r"([0-9,]+(?:\.[0-9]+)?)", sentences[-1])
+                if numbers:
+                    return float(numbers[-1].replace(',', ''))
+        
+        # Fallback: find the last number in the text
+        all_numbers = re.findall(r"([0-9,]+(?:\.[0-9]+)?)", text)
+        if all_numbers:
+            return float(all_numbers[-1].replace(',', ''))
+        
         return float('nan')
+        
     except Exception:
         return float('nan')
 
-def calculate_execution_accuracy(predictions: List[str], references: List[str]) -> float:
+def calculate_pass_at_k(
+    n: int, 
+    c: int, 
+    k: int
+) -> float:
     """
-    Calculate execution accuracy for math reasoning tasks.
+    Calculate pass@k for code generation tasks.
     
     Args:
-        predictions: List of model predictions
-        references: List of reference answers
+        n: Total number of samples generated.
+        c: Number of correct samples.
+        k: The "k" in pass@k.
         
     Returns:
-        Execution accuracy as a float between 0 and 1
+        The pass@k score.
     """
-    if not predictions:
-        return 0.0
-    
-    correct = 0
-    for pred, ref in zip(predictions, references):
-        # Extract numerical answers
-        pred_answer = extract_answer(pred)
-        ref_answer = extract_answer(ref)
+    if n - c < k:
+        return 1.0
         
-        # Check if they match within a small tolerance
-        if not (math.isnan(pred_answer) or math.isnan(ref_answer)):
-            if abs(pred_answer - ref_answer) < 1e-6:
-                correct += 1
-    
-    return correct / len(predictions)
+    return 1.0 -_comb(n - c, k) /_comb(n, k)
 
-def calculate_confidence_interval(accuracy: float, n_samples: int, confidence: float = 0.95) -> Tuple[float, float]:
+def _comb(n, k):
     """
-    Calculate confidence interval for accuracy.
-    
-    Args:
-        accuracy: Observed accuracy
-        n_samples: Number of samples
-        confidence: Confidence level (default: 0.95 for 95% confidence)
+    Calculate combinations (n choose k).
+    Helper for pass@k.
+    """
+    import math
+    if k < 0 or k > n:
+        return 0
+    if k == 0 or k == n:
+        return 1
+    if k > n // 2:
+        k = n - k
         
-    Returns:
-        Tuple of (lower_bound, upper_bound)
-    """
-    import scipy.stats as stats
-    
-    # Standard error of the mean
-    stderr = np.sqrt(accuracy * (1 - accuracy) / n_samples)
-    
-    # Z-score for the desired confidence level
-    z_score = stats.norm.ppf((1 + confidence) / 2)
-    
-    # Confidence interval
-    margin = z_score * stderr
-    lower_bound = max(0.0, accuracy - margin)
-    upper_bound = min(1.0, accuracy + margin)
-    
-    return (lower_bound, upper_bound)
-
-def aggregate_results(all_run_results: List[Dict[str, Any]]) -> Dict[str, Any]:
-    """
-    Aggregate results from multiple runs.
-    
-    Args:
-        all_run_results: List of result dictionaries from multiple runs
+    res = 1
+    for i in range(k):
+        res = res * (n - i) // (i + 1)
         
-    Returns:
-        Aggregated results with mean, std, and confidence intervals
-    """
-    if not all_run_results:
-        return {}
-    
-    # Initialize aggregated results
-    agg_results = {
-        "overall": {
-            "accuracy": {
-                "mean": 0.0,
-                "std": 0.0,
-                "ci_lower": 0.0,
-                "ci_upper": 0.0
-            },
-            "total": all_run_results[0]["overall"]["total"]
-        },
-        "subjects": {}
-    }
-    
-    # Extract all subjects
-    all_subjects = set()
-    for run_result in all_run_results:
-        if "subjects" in run_result:
-            all_subjects.update(run_result["subjects"].keys())
-    
-    # Aggregate overall accuracy
-    overall_accuracies = [run["overall"]["accuracy"] for run in all_run_results]
-    agg_results["overall"]["accuracy"]["mean"] = np.mean(overall_accuracies)
-    agg_results["overall"]["accuracy"]["std"] = np.std(overall_accuracies)
-    
-    # Calculate confidence interval
-    n_samples = all_run_results[0]["overall"]["total"]
-    ci_lower, ci_upper = calculate_confidence_interval(
-        agg_results["overall"]["accuracy"]["mean"], 
-        n_samples
-    )
-    agg_results["overall"]["accuracy"]["ci_lower"] = ci_lower
-    agg_results["overall"]["accuracy"]["ci_upper"] = ci_upper
-    
-    # Aggregate subject accuracies
-    for subject in all_subjects:
-        subject_accuracies = []
-        for run in all_run_results:
-            if "subjects" in run and subject in run["subjects"]:
-                subject_accuracies.append(run["subjects"][subject]["accuracy"])
-        
-        if subject_accuracies:
-            agg_results["subjects"][subject] = {
-                "accuracy": {
-                    "mean": np.mean(subject_accuracies),
-                    "std": np.std(subject_accuracies)
-                },
-                "total": all_run_results[0]["subjects"][subject]["total"]
-            }
-            
-            # Calculate confidence interval
-            n_samples = agg_results["subjects"][subject]["total"]
-            ci_lower, ci_upper = calculate_confidence_interval(
-                agg_results["subjects"][subject]["accuracy"]["mean"], 
-                n_samples
-            )
-            agg_results["subjects"][subject]["accuracy"]["ci_lower"] = ci_lower
-            agg_results["subjects"][subject]["accuracy"]["ci_upper"] = ci_upper
-    
-    return agg_results
+    return res

@@ -234,7 +234,7 @@ class EfficiencyBenchmark:
             if TORCH_AVAILABLE and torch.cuda.is_available():
                 torch.cuda.synchronize()
             
-            end_time = time.perf_counter()
+            end__time = time.perf_counter()
             
             # Record final state
             memory_after = self.monitor.get_memory_usage()
@@ -244,10 +244,22 @@ class EfficiencyBenchmark:
             # Calculate metrics
             latency = end_time - start_time
             
-            # Estimate actual tokens generated (rough approximation)
-            # In a real benchmark, you'd count actual tokens using the tokenizer
-            estimated_tokens = min(len(generated_text.split()) * 1.3, max_tokens)  # Rough token estimate
-            tokens_per_second = estimated_tokens / latency if latency > 0 else 0
+            # Count actual tokens generated using the tokenizer
+            actual_tokens = 0
+            if hasattr(model, 'tokenizer') and model.tokenizer is not None:
+                try:
+                    # Tokenize the generated text to get exact token count
+                    tokens = model.tokenizer.encode(generated_text)
+                    actual_tokens = len(tokens)
+                except Exception as e:
+                    self.logger.warning(f"Failed to tokenize for accurate count: {e}")
+                    # Fallback to estimation only if tokenization fails
+                    actual_tokens = min(len(generated_text.split()) * 1.3, max_tokens)
+            else:
+                # Fallback if no tokenizer available
+                actual_tokens = min(len(generated_text.split()) * 1.3, max_tokens)
+            
+            tokens_per_second = actual_tokens / latency if latency > 0 else 0
             
             memory_delta = (memory_after - memory_before) * 1024  # Convert to MB
             gpu_memory_delta = None

@@ -742,7 +742,7 @@ class BenchmarkVisualizer:
     
     def _create_significance_heatmap(self, ax: plt.Axes, multi_run_data: List[Dict], 
                                    models: List[str], tasks: List[str]):
-        """Create statistical significance heatmap."""
+        """Create statistical significance heatmap using appropriate tests."""
         if not HAS_SCIPY:
             ax.text(0.5, 0.5, 'Statistical tests require scipy\nInstall with: pip install scipy',
                    ha='center', va='center', transform=ax.transAxes,
@@ -750,8 +750,7 @@ class BenchmarkVisualizer:
             ax.set_title('Statistical Significance (scipy required)', fontweight='bold')
             return
         
-        # Simplified pairwise t-test (placeholder)
-        # In practice, you'd want more sophisticated statistical tests
+        # Use appropriate statistical tests for benchmark comparisons
         n_models = len(models)
         p_values = np.ones((n_models, n_models))
         
@@ -771,15 +770,34 @@ class BenchmarkVisualizer:
                         all_scores.append(np.mean(model_scores))
             model_data[model] = all_scores
         
-        # Pairwise comparisons
+        # Pairwise comparisons using appropriate tests
         for i, model1 in enumerate(models):
             for j, model2 in enumerate(models):
                 if i != j and model1 in model_data and model2 in model_data:
                     data1 = model_data[model1]
                     data2 = model_data[model2]
+                    
                     if len(data1) > 1 and len(data2) > 1:
-                        _, p_val = stats.ttest_ind(data1, data2)
-                        p_values[i, j] = p_val
+                        # Use paired t-test if same number of runs (paired data)
+                        if len(data1) == len(data2):
+                            _, p_val = stats.ttest_rel(data1, data2)
+                        else:
+                            # Use Welch's t-test for unequal variances
+                            _, p_val = stats.ttest_ind(data1, data2, equal_var=False)
+                        
+                        # Apply Bonferroni correction for multiple comparisons
+                        # Number of comparisons = n*(n-1)/2
+                        n_comparisons = n_models * (n_models - 1) / 2
+                        p_val_corrected = min(p_val * n_comparisons, 1.0)
+                        p_values[i, j] = p_val_corrected
+                    
+                    # For small sample sizes, consider non-parametric tests
+                    elif len(data1) >= 1 and len(data2) >= 1:
+                        # Use Mann-Whitney U test for small samples
+                        _, p_val = stats.mannwhitneyu(data1, data2, alternative='two-sided')
+                        n_comparisons = n_models * (n_models - 1) / 2
+                        p_val_corrected = min(p_val * n_comparisons, 1.0)
+                        p_values[i, j] = p_val_corrected
         
         # Create heatmap
         im = ax.imshow(p_values, cmap='RdYlGn_r', vmin=0, vmax=0.1)
