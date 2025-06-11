@@ -26,8 +26,6 @@ class ModelLoadingError(Exception):
 class BaseModelLoader:
     """Abstract base class for model loaders."""
 
-
-
     def __init__(self, model_name: str, config: Dict[str, Any]):
         self.model_name = model_name
         self.config = config

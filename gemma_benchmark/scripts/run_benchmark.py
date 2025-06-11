@@ -30,14 +30,15 @@ def register_available_tasks():
     """
     logger = logging.getLogger("gemma_benchmark")
     logger.info("Registering available benchmark tasks...")
-    
+
     registered_count = 0
     failed_modules = []
-    
+
     try:
         import gemma_benchmark.tasks
+
         package = gemma_benchmark.tasks
-        
+
         # Walk through all modules in the tasks package
         for _, module_name, _ in pkgutil.walk_packages(
             package.__path__, package.__name__ + "."
@@ -45,11 +46,11 @@ def register_available_tasks():
             try:
                 # Import the module
                 module = importlib.import_module(module_name)
-                
+
                 # Look for benchmark classes in the module
                 for attribute_name in dir(module):
                     attribute = getattr(module, attribute_name)
-                    
+
                     # Check if it's a class that inherits from AbstractBenchmark
                     if (
                         isinstance(attribute, type)
@@ -59,7 +60,7 @@ def register_available_tasks():
                         # Extract task type from class name
                         # E.g., MMLUBenchmark -> mmlu, GSM8KBenchmark -> gsm8k
                         task_type = attribute.__name__.replace("Benchmark", "").lower()
-                        
+
                         # Handle special cases for naming
                         if task_type == "gsm8k":
                             task_type = "gsm8k"  # Keep as is
@@ -69,27 +70,31 @@ def register_available_tasks():
                             task_type = "truthfulqa"  # Keep as is
                         elif task_type == "arc":
                             task_type = "arc"  # Keep as is
-                        
+
                         # Register the benchmark
                         BenchmarkFactory.register_benchmark(task_type, attribute)
-                        logger.debug(f"Registered benchmark '{task_type}' from {attribute.__name__}")
+                        logger.debug(
+                            f"Registered benchmark '{task_type}' from {attribute.__name__}"
+                        )
                         registered_count += 1
-                        
+
             except Exception as e:
-                logger.warning(f"Could not register tasks from module {module_name}: {e}")
+                logger.warning(
+                    f"Could not register tasks from module {module_name}: {e}"
+                )
                 failed_modules.append((module_name, str(e)))
-    
+
     except Exception as e:
         logger.error(f"Failed to walk packages in gemma_benchmark.tasks: {e}")
-    
+
     # Log summary
     logger.info(f"Successfully registered {registered_count} benchmark tasks")
-    
+
     if failed_modules:
         logger.warning(f"Failed to load {len(failed_modules)} modules:")
         for module_name, error in failed_modules:
             logger.warning(f"  - {module_name}: {error}")
-    
+
     # Log all registered tasks
     try:
         registered_tasks = BenchmarkFactory.get_supported_types()
@@ -99,11 +104,13 @@ def register_available_tasks():
             logger.warning("No tasks were registered!")
     except Exception as e:
         logger.error(f"Could not retrieve registered tasks: {e}")
-    
+
     # Manual fallback registration if automatic registration failed
     if registered_count == 0:
-        logger.warning("Automatic registration failed, attempting manual registration...")
-        
+        logger.warning(
+            "Automatic registration failed, attempting manual registration..."
+        )
+
         manual_tasks = [
             ("gemma_benchmark.tasks.mmlu", "MMLUBenchmark", "mmlu"),
             ("gemma_benchmark.tasks.gsm8k", "Gsm8kBenchmark", "gsm8k"),
@@ -112,7 +119,7 @@ def register_available_tasks():
             ("gemma_benchmark.tasks.arc", "ArcBenchmark", "arc"),
             ("gemma_benchmark.tasks.truthfulqa", "TruthfulqaBenchmark", "truthfulqa"),
         ]
-        
+
         for module_path, class_name, task_type in manual_tasks:
             try:
                 module = importlib.import_module(module_path)
@@ -160,7 +167,7 @@ Examples:
   
   # Run with visualization
   %(prog)s --config configs/benchmark_config.yaml --visualize
-        """
+        """,
     )
 
     parser.add_argument(
@@ -189,9 +196,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--visualize", 
-        action="store_true", 
-        help="Generate visualizations from results"
+        "--visualize", action="store_true", help="Generate visualizations from results"
     )
 
     parser.add_argument(
@@ -203,15 +208,11 @@ Examples:
     )
 
     parser.add_argument(
-        "--list-tasks",
-        action="store_true",
-        help="List available tasks and exit"
+        "--list-tasks", action="store_true", help="List available tasks and exit"
     )
 
     parser.add_argument(
-        "--list-models",
-        action="store_true",
-        help="List models in config and exit"
+        "--list-models", action="store_true", help="List models in config and exit"
     )
 
     return parser.parse_args()
@@ -235,13 +236,14 @@ def list_config_models(config_path: str):
     """List all models defined in the configuration."""
     try:
         import yaml
-        with open(config_path, 'r') as f:
+
+        with open(config_path, "r") as f:
             config = yaml.safe_load(f)
-        
+
         print(f"\nModels defined in {config_path}:")
-        if 'models' in config:
-            for model_name, model_config in config['models'].items():
-                model_type = model_config.get('type', 'unknown')
+        if "models" in config:
+            for model_name, model_config in config["models"].items():
+                model_type = model_config.get("type", "unknown")
                 print(f"  - {model_name} (type: {model_type})")
         else:
             print("  No models defined")
@@ -263,7 +265,7 @@ def main() -> None:
     if args.list_tasks:
         list_available_tasks()
         sys.exit(0)
-    
+
     if args.list_models:
         list_config_models(args.config)
         sys.exit(0)
@@ -307,12 +309,14 @@ def main() -> None:
         if not benchmark.models:
             logger.error("No models were loaded successfully")
             sys.exit(1)
-        
+
         if not benchmark.tasks:
             logger.error("No tasks were loaded successfully")
             sys.exit(1)
 
-        logger.info(f"Loaded {len(benchmark.models)} model(s) and {len(benchmark.tasks)} task(s)")
+        logger.info(
+            f"Loaded {len(benchmark.models)} model(s) and {len(benchmark.tasks)} task(s)"
+        )
 
         # Run benchmarks
         logger.info("Starting benchmark evaluation...")
@@ -326,6 +330,7 @@ def main() -> None:
         # Save configuration used
         config_copy = os.path.join(output_dir, "config_used.yaml")
         import shutil
+
         shutil.copy2(args.config, config_copy)
         logger.info(f"Configuration saved to: {config_copy}")
 
@@ -334,7 +339,7 @@ def main() -> None:
             logger.info("Generating visualizations...")
             vis_dir = os.path.join(output_dir, "visualizations")
             os.makedirs(vis_dir, exist_ok=True)
-            
+
             chart_generator = ChartGenerator(vis_dir)
 
             try:
@@ -350,9 +355,13 @@ def main() -> None:
                             results, task_name
                         )
                         if comparison_path:
-                            logger.info(f"Generated {task_name} comparison: {comparison_path}")
+                            logger.info(
+                                f"Generated {task_name} comparison: {comparison_path}"
+                            )
                     except Exception as e:
-                        logger.warning(f"Could not create comparison chart for {task_name}: {e}")
+                        logger.warning(
+                            f"Could not create comparison chart for {task_name}: {e}"
+                        )
 
                     # Create subject breakdown charts for MMLU
                     if task_name.lower().startswith("mmlu"):
@@ -363,50 +372,71 @@ def main() -> None:
                                 and "subjects" in results[model_name][task_name]
                             ):
                                 try:
-                                    subject_path = chart_generator.create_subject_breakdown_chart(
-                                        results, model_name, task_name
+                                    subject_path = (
+                                        chart_generator.create_subject_breakdown_chart(
+                                            results, model_name, task_name
+                                        )
                                     )
                                     if subject_path:
-                                        logger.info(f"Generated subject breakdown: {subject_path}")
+                                        logger.info(
+                                            f"Generated subject breakdown: {subject_path}"
+                                        )
                                 except Exception as e:
-                                    logger.warning(f"Could not create subject breakdown: {e}")
+                                    logger.warning(
+                                        f"Could not create subject breakdown: {e}"
+                                    )
 
                 # Create efficiency comparison charts
-                if any("efficiency" in task_name.lower() for task_name in benchmark.tasks.keys()):
+                if any(
+                    "efficiency" in task_name.lower()
+                    for task_name in benchmark.tasks.keys()
+                ):
                     try:
-                        efficiency_charts = chart_generator.create_efficiency_comparison_chart(results)
+                        efficiency_charts = (
+                            chart_generator.create_efficiency_comparison_chart(results)
+                        )
                         for chart_type, path in efficiency_charts.items():
-                            logger.info(f"Generated efficiency chart ({chart_type}): {path}")
+                            logger.info(
+                                f"Generated efficiency chart ({chart_type}): {path}"
+                            )
                     except Exception as e:
                         logger.warning(f"Could not create efficiency charts: {e}")
 
                 # Create model size vs performance charts
                 for task_name in benchmark.tasks.keys():
                     try:
-                        size_perf_path = chart_generator.create_model_size_vs_performance_chart(
-                            results, task_name
+                        size_perf_path = (
+                            chart_generator.create_model_size_vs_performance_chart(
+                                results, task_name
+                            )
                         )
                         if size_perf_path:
-                            logger.info(f"Generated size vs performance chart: {size_perf_path}")
+                            logger.info(
+                                f"Generated size vs performance chart: {size_perf_path}"
+                            )
                     except Exception as e:
-                        logger.warning(f"Could not create size vs performance chart: {e}")
+                        logger.warning(
+                            f"Could not create size vs performance chart: {e}"
+                        )
 
             except Exception as e:
-                logger.error(f"Error during visualization generation: {e}", exc_info=True)
+                logger.error(
+                    f"Error during visualization generation: {e}", exc_info=True
+                )
 
             logger.info(f"Visualizations saved to: {vis_dir}")
 
         # Print summary
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("BENCHMARK COMPLETE")
-        print("="*60)
+        print("=" * 60)
         print(f"Results saved to: {output_dir}")
         print(f"\nModels evaluated: {', '.join(benchmark.models.keys())}")
         print(f"Tasks completed: {', '.join(benchmark.tasks.keys())}")
-        
+
         if args.visualize:
             print(f"Visualizations: {vis_dir}")
-        
+
         print("\n✅ Benchmark completed successfully!")
 
     except KeyboardInterrupt:
