@@ -6,12 +6,13 @@ creating import dependencies, enabling clean separation of concerns.
 """
 
 from abc import ABC, abstractmethod
-from typing import Protocol, Dict, Any, Optional, List, Union
 from dataclasses import dataclass
+from typing import Any, Protocol
+
 import torch
 
 
-@dataclass
+@dataclass(slots=True)
 class GenerationConfig:
     """Configuration for text generation."""
 
@@ -21,21 +22,23 @@ class GenerationConfig:
     top_p: float = 1.0
     top_k: int = 50
     repetition_penalty: float = 1.0
-    pad_token_id: Optional[int] = None
-    eos_token_id: Optional[int] = None
+    pad_token_id: int | None = None
+    eos_token_id: int | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ModelInfo:
     """Information about a loaded model."""
 
     name: str
     type: str
-    size: Optional[str] = None
-    variant: Optional[str] = None
-    device: Optional[str] = None
-    memory_usage: Optional[float] = None  # In GB
-    parameters: Optional[int] = None
+    size: str | None = None
+    variant: str | None = None
+    device: str | None = None
+    memory_usage: float | None = None  # In GB
+    parameters: int | None = None
+    use_flash_attention: bool = False
+    compiled: bool = False
 
 
 class ModelInterface(Protocol):
@@ -51,11 +54,11 @@ class ModelInterface(Protocol):
         """Get model information."""
         ...
 
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate text from a prompt."""
         ...
 
-    def generate_batch(self, prompts: List[str], **kwargs) -> List[str]:
+    def generate_batch(self, prompts: list[str], **kwargs: Any) -> list[str]:
         """Generate text for multiple prompts."""
         ...
 
@@ -65,13 +68,22 @@ class ModelInterface(Protocol):
 
 
 class ModelWrapper:
-    """Concrete wrapper class for language models."""
+    """Concrete wrapper class for language models with modern optimizations."""
 
-    def __init__(self, model, tokenizer, model_name: str):
+    def __init__(
+        self,
+        model: Any,
+        tokenizer: Any,
+        model_name: str,
+        use_compile: bool = False,
+        use_flash_attention: bool = False,
+    ):
         self.model = model
         self.tokenizer = tokenizer
         self.model_name = model_name
-        self._device = None
+        self._device: torch.device | None = None
+        self._compiled = False
+        self._use_flash_attention = use_flash_attention
 
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -81,9 +93,17 @@ class ModelWrapper:
         else:
             self._device = torch.device("cpu")
 
+        # Apply torch.compile for PyTorch 2.0+ optimization
+        if use_compile and hasattr(torch, "compile"):
+            try:
+                self.model = torch.compile(self.model, mode="reduce-overhead")
+                self._compiled = True
+            except Exception:
+                pass  # Compilation not supported for this model
+
     @property
     def model_info(self) -> ModelInfo:
-        info = ModelInfo(
+        return ModelInfo(
             name=self.model_name,
             type=(
                 self.model.config.model_type
@@ -91,16 +111,17 @@ class ModelWrapper:
                 else "unknown"
             ),
             device=str(self._device),
+            use_flash_attention=self._use_flash_attention,
+            compiled=self._compiled,
         )
-        return info
 
-    def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs) -> str:
+    def generate(self, prompt: str, max_new_tokens: int = 100, **kwargs: Any) -> str:
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True)
 
         if self._device:
             inputs = {k: v.to(self._device) for k, v in inputs.items()}
 
-        with torch.no_grad():
+        with torch.inference_mode():
             outputs = self.model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
@@ -112,8 +133,44 @@ class ModelWrapper:
         generated_ids = outputs[0][inputs["input_ids"].shape[1] :]
         return self.tokenizer.decode(generated_ids, skip_special_tokens=True)
 
-    def generate_batch(self, prompts: List[str], **kwargs) -> List[str]:
-        return [self.generate(prompt, **kwargs) for prompt in prompts]
+    def generate_batch(
+        self, prompts: list[str], batch_size: int = 8, **kwargs: Any
+    ) -> list[str]:
+        """Generate text for multiple prompts with proper batching."""
+        results: list[str] = []
+
+        # Process in batches for better GPU utilization
+        for i in range(0, len(prompts), batch_size):
+            batch_prompts = prompts[i : i + batch_size]
+
+            # Tokenize batch with padding
+            inputs = self.tokenizer(
+                batch_prompts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+            )
+
+            if self._device:
+                inputs = {k: v.to(self._device) for k, v in inputs.items()}
+
+            with torch.inference_mode():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=kwargs.get("max_new_tokens", 100),
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    **{k: v for k, v in kwargs.items() if k != "max_new_tokens"},
+                )
+
+            # Decode each output, removing the input tokens
+            for j, output in enumerate(outputs):
+                input_length = inputs["input_ids"][j].shape[0]
+                generated_ids = output[input_length:]
+                text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+                results.append(text)
+
+        return results
 
     def cleanup(self) -> None:
         if hasattr(self, "model"):
@@ -128,11 +185,11 @@ class ModelWrapper:
 class TokenizerInterface(Protocol):
     """Protocol for tokenizer functionality."""
 
-    def encode(self, text: str) -> List[int]:
+    def encode(self, text: str) -> list[int]:
         """Encode text to token ids."""
         ...
 
-    def decode(self, token_ids: List[int]) -> str:
+    def decode(self, token_ids: list[int]) -> str:
         """Decode token ids to text."""
         ...
 
@@ -141,15 +198,15 @@ class TokenizerInterface(Protocol):
         ...
 
 
-@dataclass
+@dataclass(slots=True)
 class BenchmarkResult:
     """Standard result format for all benchmarks."""
 
-    overall: Dict[str, Any]
-    config: Dict[str, Any]
-    metadata: Dict[str, Any]
-    details: Optional[Dict[str, Any]] = None
-    errors: Optional[List[Dict[str, Any]]] = None
+    overall: dict[str, Any]
+    config: dict[str, Any]
+    metadata: dict[str, Any]
+    details: dict[str, Any] | None = None
+    errors: list[dict[str, Any]] | None = None
 
 
 class BenchmarkInterface(Protocol):
@@ -161,7 +218,7 @@ class BenchmarkInterface(Protocol):
         ...
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """Get benchmark configuration."""
         ...
 
@@ -177,7 +234,7 @@ class BenchmarkInterface(Protocol):
 class ModelLoaderInterface(Protocol):
     """Protocol for model loading functionality."""
 
-    def load_model(self, **kwargs) -> ModelInterface:
+    def load_model(self, **kwargs: Any) -> ModelInterface:
         """Load a model with given parameters."""
         ...
 
@@ -191,10 +248,10 @@ class AbstractModelWrapper(ABC):
 
     def __init__(self, model_name: str):
         self.model_name = model_name
-        self._model = None
-        self._tokenizer = None
-        self._device = None
-        self._model_info = None
+        self._model: Any = None
+        self._tokenizer: Any = None
+        self._device: torch.device | None = None
+        self._model_info: ModelInfo | None = None
 
     @property
     def model_info(self) -> ModelInfo:
@@ -209,11 +266,11 @@ class AbstractModelWrapper(ABC):
         pass
 
     @abstractmethod
-    def _load_model_and_tokenizer(self, **kwargs):
+    def _load_model_and_tokenizer(self, **kwargs: Any) -> None:
         """Load the actual model and tokenizer."""
         pass
 
-    def generate(self, prompt: str, **kwargs) -> str:
+    def generate(self, prompt: str, **kwargs: Any) -> str:
         """Generate text from a prompt with error handling."""
         if self._model is None or self._tokenizer is None:
             raise RuntimeError(
@@ -223,14 +280,14 @@ class AbstractModelWrapper(ABC):
         try:
             return self._generate_impl(prompt, **kwargs)
         except Exception as e:
-            raise RuntimeError(f"Generation failed for {self.model_name}: {str(e)}")
+            raise RuntimeError(f"Generation failed for {self.model_name}: {e!s}")
 
     @abstractmethod
-    def _generate_impl(self, prompt: str, **kwargs) -> str:
+    def _generate_impl(self, prompt: str, **kwargs: Any) -> str:
         """Implementation-specific generation logic."""
         pass
 
-    def generate_batch(self, prompts: List[str], **kwargs) -> List[str]:
+    def generate_batch(self, prompts: list[str], **kwargs: Any) -> list[str]:
         """Generate text for multiple prompts."""
         # Default implementation - can be overridden for batch optimization
         return [self.generate(prompt, **kwargs) for prompt in prompts]
@@ -255,14 +312,14 @@ class AbstractModelWrapper(ABC):
 class AbstractBenchmark(ABC):
     """Abstract base class for benchmarks with common functionality."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.name = self.__class__.__name__.replace("Benchmark", "").lower()
-        self._data = None
-        self._logger = None
+        self._data: Any = None
+        self._logger: Any = None
 
     @property
-    def logger(self):
+    def logger(self) -> Any:
         """Get logger instance."""
         if self._logger is None:
             import logging
@@ -276,7 +333,7 @@ class AbstractBenchmark(ABC):
         pass
 
     @abstractmethod
-    def _evaluate_impl(self, model: ModelInterface) -> Dict[str, Any]:
+    def _evaluate_impl(self, model: ModelInterface) -> dict[str, Any]:
         """Implementation-specific evaluation logic."""
         pass
 
@@ -299,7 +356,13 @@ class AbstractBenchmark(ABC):
                 metadata={
                     "benchmark_name": self.name,
                     "model_name": model.model_name,
-                    "model_info": model.model_info.__dict__,
+                    "model_info": {
+                        "name": model.model_info.name,
+                        "type": model.model_info.type,
+                        "device": model.model_info.device,
+                        "compiled": model.model_info.compiled,
+                        "use_flash_attention": model.model_info.use_flash_attention,
+                    },
                 },
                 details=raw_results.get("details"),
                 errors=raw_results.get("errors", []),
@@ -309,7 +372,7 @@ class AbstractBenchmark(ABC):
             return result
 
         except Exception as e:
-            self.logger.error(f"Evaluation failed for {self.name}: {str(e)}")
+            self.logger.error(f"Evaluation failed for {self.name}: {e!s}")
             # Return a failed result instead of crashing
             return BenchmarkResult(
                 overall={"error": str(e), "success": False},
@@ -326,10 +389,10 @@ class AbstractBenchmark(ABC):
 class ModelFactory:
     """Factory for creating model loaders without circular dependencies."""
 
-    _loaders: Dict[str, type] = {}
+    _loaders: dict[str, type] = {}
 
     @classmethod
-    def register_loader(cls, model_type: str, loader_class: type):
+    def register_loader(cls, model_type: str, loader_class: type) -> None:
         """Register a model loader class for a specific type."""
         cls._loaders[model_type] = loader_class
 
@@ -343,7 +406,7 @@ class ModelFactory:
         return loader_class()
 
     @classmethod
-    def get_supported_types(cls) -> List[str]:
+    def get_supported_types(cls) -> list[str]:
         """Get list of supported model types."""
         return list(cls._loaders.keys())
 
@@ -351,16 +414,16 @@ class ModelFactory:
 class BenchmarkFactory:
     """Factory for creating benchmark instances without circular dependencies."""
 
-    _benchmarks: Dict[str, type] = {}
+    _benchmarks: dict[str, type] = {}
 
     @classmethod
-    def register_benchmark(cls, benchmark_type: str, benchmark_class: type):
+    def register_benchmark(cls, benchmark_type: str, benchmark_class: type) -> None:
         """Register a benchmark class for a specific type."""
         cls._benchmarks[benchmark_type] = benchmark_class
 
     @classmethod
     def create_benchmark(
-        cls, benchmark_type: str, config: Dict[str, Any]
+        cls, benchmark_type: str, config: dict[str, Any]
     ) -> BenchmarkInterface:
         """Create a benchmark instance for the given type."""
         if benchmark_type not in cls._benchmarks:
@@ -370,7 +433,7 @@ class BenchmarkFactory:
         return benchmark_class(config)
 
     @classmethod
-    def get_supported_types(cls) -> List[str]:
+    def get_supported_types(cls) -> list[str]:
         """Get list of supported benchmark types."""
         return list(cls._benchmarks.keys())
 
@@ -401,7 +464,7 @@ class AuthenticationError(Exception):
 
 
 # Utility functions for common operations
-def validate_generation_config(config: Dict[str, Any]) -> GenerationConfig:
+def validate_generation_config(config: dict[str, Any]) -> GenerationConfig:
     """Validate and create a GenerationConfig from a dictionary."""
     valid_keys = {
         "max_new_tokens",

@@ -2,6 +2,8 @@
 #
 # This file defines which models to test, which benchmarks to run,
 # and how to configure the evaluation and output.
+#
+# Requires Python 3.10+ and PyTorch 2.4+
 
 # -----------------
 # Model Definitions
@@ -10,7 +12,7 @@
 # Each key is a unique name for the model configuration.
 models:
   gemma-2b:
-    # `type` specifies the model family. Supported: "gemma", "mistral", "huggingface"
+    # `type` specifies the model family. Supported: "gemma", "mistral", "llama", "huggingface"
     type: "gemma"
     # `size` is specific to the model type (e.g., "2b", "9b" for gemma)
     size: "2b"
@@ -20,12 +22,18 @@ models:
     quantization: true
     # `cache_dir` is an optional directory to store downloaded models
     cache_dir: "cache/models"
+    # `use_flash_attention` enables Flash Attention 2 or SDPA for faster inference
+    use_flash_attention: true
+    # `use_compile` enables torch.compile() for PyTorch 2.0+ optimization
+    use_compile: false
 
   gemma-9b:
     type: "gemma"
     size: "9b"
     variant: "it"
     quantization: true
+    use_flash_attention: true
+    use_compile: false
     # `max_memory` allows distributing large models across multiple GPUs
     max_memory:
       0: "15GB"

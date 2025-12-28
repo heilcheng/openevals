@@ -2,12 +2,12 @@
 Benchmark for the MMLU (Massive Multitask Language Understanding) dataset.
 """
 
-import re
 import random
-from typing import Dict, Any, List
-from datasets import load_dataset, Dataset
+import re
+from typing import Any
 
-# Core benchmark interfaces
+from datasets import Dataset, load_dataset
+
 from gemma_benchmark.core.interfaces import AbstractBenchmark, ModelInterface
 
 # Prompt templates
@@ -38,14 +38,17 @@ Answer:
 class MMLUBenchmark(AbstractBenchmark):
     """Benchmark for the MMLU dataset."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]) -> None:
         super().__init__(config)
         self.subset = self.config.get("subset", "all")
         self.shot_count = self.config.get("shot_count", 5)
 
-    # --- HELPER METHOD ADDED TO SUPPORT THE NEW load_data ---
     def _format_full_prompt(
-        self, question: str, choices: list, subject: str, few_shot_examples: list
+        self,
+        question: str,
+        choices: list[str],
+        subject: str,
+        few_shot_examples: list[dict[str, Any]],
     ) -> str:
         """Formats the complete prompt with few-shot examples."""
 
@@ -126,7 +129,7 @@ class MMLUBenchmark(AbstractBenchmark):
             )
         return Dataset.from_list(prompts)
 
-    def _evaluate_impl(self, model: ModelInterface) -> Dict[str, Any]:
+    def _evaluate_impl(self, model: ModelInterface) -> dict[str, Any]:
         """Implementation-specific evaluation logic for MMLU."""
         if self._data is None:
             self._data = self.load_data()
@@ -137,11 +140,11 @@ class MMLUBenchmark(AbstractBenchmark):
         responses = model.generate_batch(prompts, max_new_tokens=5)
 
         # Calculate accuracy
-        correct_by_subject = {}
-        total_by_subject = {}
-        results_details = []
+        correct_by_subject: dict[str, int] = {}
+        total_by_subject: dict[str, int] = {}
+        results_details: list[dict[str, Any]] = []
 
-        for i, (item, response) in enumerate(zip(self._data, responses)):
+        for i, (item, response) in enumerate(zip(self._data, responses, strict=False)):
             correct_letter = item["correct_letter"]
             subject = item["subject"]
 
