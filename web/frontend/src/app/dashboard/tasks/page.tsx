@@ -129,16 +129,22 @@ export default function TasksPage() {
   useEffect(() => {
     async function fetchTasks() {
       try {
-        const data = await taskAPI.list();
-        // Merge API data with defaults, ensuring metrics is always defined
-        const mergedTasks = data.map((task) => {
-          const defaultTask = defaultTasks.find((t) => t.type === task.type);
-          return {
-            ...task,
-            metrics: task.metrics || defaultTask?.metrics || ["accuracy"],
-          };
+        const data = await taskAPI.list().catch(() => []);
+
+        // Merge API tasks with defaults, ensuring metrics exist
+        const mergedTasks = defaultTasks.map((defaultTask) => {
+          const apiTask = data.find((t) => t.type === defaultTask.type);
+          return apiTask
+            ? { ...defaultTask, ...apiTask, metrics: apiTask.metrics || defaultTask.metrics }
+            : defaultTask;
         });
-        setTasks(mergedTasks.length > 0 ? mergedTasks : defaultTasks);
+
+        // Add any API tasks not in defaults
+        const additionalTasks = data.filter(
+          (t) => !defaultTasks.find((d) => d.type === t.type)
+        ).map((t) => ({ ...t, metrics: t.metrics || ["accuracy"] }));
+
+        setTasks([...mergedTasks, ...additionalTasks]);
       } catch (error) {
         console.error("Failed to fetch tasks:", error);
         setTasks(defaultTasks);

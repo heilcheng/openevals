@@ -71,23 +71,23 @@ export default function NewBenchmarkPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [modelsData, tasksData] = await Promise.all([
-          modelAPI.types().catch(() => defaultModelTypes),
-          taskAPI.list().catch(() => defaultTasks),
-        ]);
+        const tasksData = await taskAPI.list().catch(() => []);
 
-        // Merge with defaults and ensure metrics exist
-        const mergedModels = modelsData.length > 0 ? modelsData : defaultModelTypes;
-        const mergedTasks = tasksData.map((task) => {
-          const defaultTask = defaultTasks.find((t) => t.type === task.type);
-          return {
-            ...task,
-            metrics: task.metrics || defaultTask?.metrics || ["accuracy"],
-          };
+        // Merge API tasks with defaults, ensuring metrics exist
+        const mergedTasks = defaultTasks.map((defaultTask) => {
+          const apiTask = tasksData.find((t) => t.type === defaultTask.type);
+          return apiTask
+            ? { ...defaultTask, ...apiTask, metrics: apiTask.metrics || defaultTask.metrics }
+            : defaultTask;
         });
 
-        setModelTypes(mergedModels);
-        setTasks(mergedTasks.length > 0 ? mergedTasks : defaultTasks);
+        // Add any API tasks not in defaults
+        const additionalTasks = tasksData.filter(
+          (t) => !defaultTasks.find((d) => d.type === t.type)
+        );
+
+        setModelTypes(defaultModelTypes);
+        setTasks([...mergedTasks, ...additionalTasks]);
       } catch (error) {
         console.error("Failed to fetch data:", error);
         setModelTypes(defaultModelTypes);
