@@ -1,10 +1,9 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-interface ShimmerButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ShimmerButtonProps extends HTMLMotionProps<"button"> {
   shimmerColor?: string;
   shimmerSize?: string;
   borderRadius?: string;
@@ -66,13 +65,16 @@ export function ShimmerButton({
   );
 }
 
+interface GlowingButtonProps extends HTMLMotionProps<"button"> {
+  children: React.ReactNode;
+  className?: string;
+}
+
 export function GlowingButton({
   children,
   className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: React.ReactNode;
-}) {
+}: GlowingButtonProps) {
   return (
     <motion.button
       whileHover={{ scale: 1.02 }}
@@ -102,9 +104,11 @@ export function GlowingButton({
       />
 
       {/* Glow */}
-      <span className="absolute inset-0 rounded-lg opacity-50 blur-lg"
+      <span
+        className="absolute inset-0 rounded-lg opacity-50 blur-lg"
         style={{
-          background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))"
+          background:
+            "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))",
         }}
       />
 

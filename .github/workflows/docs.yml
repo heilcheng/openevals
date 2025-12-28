@@ -15,7 +15,25 @@ permissions:
   id-token: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      has_mkdocs: ${{ steps.check.outputs.has_mkdocs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for mkdocs.yml
+        id: check
+        run: |
+          if [ -f "mkdocs.yml" ]; then
+            echo "has_mkdocs=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_mkdocs=false" >> $GITHUB_OUTPUT
+            echo "No mkdocs.yml found, skipping docs build"
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.has_mkdocs == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,22 +44,20 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: |
-          pip install mkdocs mkdocs-material mkdocstrings[python]
+        run: pip install mkdocs mkdocs-material mkdocstrings[python]
 
       - name: Build documentation
-        run: mkdocs build --strict || echo "mkdocs.yml not found, skipping docs build"
+        run: mkdocs build --strict
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/
-        if: hashFiles('mkdocs.yml') != ''
 
   deploy:
-    needs: build
+    needs: [check, build]
+    if: needs.check.outputs.has_mkdocs == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
