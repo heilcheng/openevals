@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import {
   Plus,
   Cpu,
   Settings2,
   Trash2,
-  Sparkles,
-  Zap,
-  Server,
+  ExternalLink,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -31,36 +28,27 @@ import {
 } from "@/components/ui/select";
 import { modelAPI, type ModelConfigResponse, type ModelTypeInfo } from "@/lib/api";
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-};
-
-const item = {
-  hidden: { opacity: 0, scale: 0.95 },
-  show: { opacity: 1, scale: 1 },
-};
-
-const modelIcons: Record<string, React.ReactNode> = {
-  gemma: <Sparkles className="h-5 w-5" />,
-  mistral: <Zap className="h-5 w-5" />,
-  llama: <Server className="h-5 w-5" />,
-  huggingface: <Cpu className="h-5 w-5" />,
-};
-
-const modelColors: Record<string, string> = {
-  gemma: "from-blue-500 to-cyan-500",
-  mistral: "from-orange-500 to-amber-500",
-  llama: "from-purple-500 to-pink-500",
-  huggingface: "from-yellow-500 to-orange-500",
-};
+// Default model types with metadata
+const defaultModelTypes: ModelTypeInfo[] = [
+  { type: "gemma", name: "Gemma", sizes: ["2b", "7b", "9b", "27b"], default_size: "7b" },
+  { type: "gemma3", name: "Gemma 3", sizes: ["1b", "4b", "12b", "27b"], default_size: "4b" },
+  { type: "llama3", name: "Llama 3", sizes: ["8b", "70b"], default_size: "8b" },
+  { type: "llama3.1", name: "Llama 3.1", sizes: ["8b", "70b", "405b"], default_size: "8b" },
+  { type: "llama3.2", name: "Llama 3.2", sizes: ["1b", "3b", "11b", "90b"], default_size: "3b" },
+  { type: "mistral", name: "Mistral", sizes: ["7b"], default_size: "7b" },
+  { type: "mixtral", name: "Mixtral", sizes: ["8x7b", "8x22b"], default_size: "8x7b" },
+  { type: "qwen2", name: "Qwen 2", sizes: ["0.5b", "1.5b", "7b", "72b"], default_size: "7b" },
+  { type: "qwen2.5", name: "Qwen 2.5", sizes: ["0.5b", "1.5b", "3b", "7b", "14b", "32b", "72b"], default_size: "7b" },
+  { type: "deepseek", name: "DeepSeek", sizes: ["7b", "67b"], default_size: "7b" },
+  { type: "deepseek-r1", name: "DeepSeek-R1", sizes: ["1.5b", "7b", "8b", "14b", "32b", "70b", "671b"], default_size: "7b" },
+  { type: "phi3", name: "Phi-3", sizes: ["mini", "small", "medium"], default_size: "mini" },
+  { type: "olmo", name: "OLMo", sizes: ["1b", "7b"], default_size: "7b" },
+  { type: "huggingface", name: "HuggingFace", sizes: ["custom"], default_size: "custom" },
+];
 
 export default function ModelsPage() {
   const [models, setModels] = useState<ModelConfigResponse[]>([]);
-  const [modelTypes, setModelTypes] = useState<ModelTypeInfo[]>([]);
+  const [modelTypes, setModelTypes] = useState<ModelTypeInfo[]>(defaultModelTypes);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newModel, setNewModel] = useState({
@@ -72,12 +60,8 @@ export default function ModelsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const [modelsData, typesData] = await Promise.all([
-          modelAPI.list(),
-          modelAPI.types(),
-        ]);
+        const modelsData = await modelAPI.list().catch(() => []);
         setModels(modelsData);
-        setModelTypes(typesData);
       } catch (error) {
         console.error("Failed to fetch models:", error);
       } finally {
@@ -121,14 +105,15 @@ export default function ModelsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Models</h1>
-          <p className="text-muted-foreground">
-            Manage your model configurations
+          <h1 className="text-2xl font-semibold tracking-tight">Models</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Supported model families and saved configurations
           </p>
         </div>
         <Button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="gap-2 gradient-primary text-primary-foreground"
+          size="sm"
+          className="gap-2"
         >
           <Plus className="h-4 w-4" />
           Add Model
@@ -137,222 +122,223 @@ export default function ModelsPage() {
 
       {/* Add Model Form */}
       {showAddForm && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-        >
-          <Card className="border-primary/50">
-            <CardHeader>
-              <CardTitle>Add New Model</CardTitle>
-              <CardDescription>
-                Configure a new model for benchmarking
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <label className="text-sm font-medium">Model Name</label>
-                  <Input
-                    placeholder="My Gemma Model"
-                    value={newModel.name}
-                    onChange={(e) =>
-                      setNewModel((prev) => ({ ...prev, name: e.target.value }))
-                    }
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Model Type</label>
-                  <Select
-                    value={newModel.model_type}
-                    onValueChange={(value) =>
-                      setNewModel((prev) => ({
-                        ...prev,
-                        model_type: value,
-                        size: "",
-                      }))
-                    }
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {modelTypes.map((type) => (
-                        <SelectItem key={type.type} value={type.type}>
-                          {type.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Size</label>
-                  <Select
-                    value={newModel.size}
-                    onValueChange={(value) =>
-                      setNewModel((prev) => ({ ...prev, size: value }))
-                    }
-                    disabled={!selectedType}
-                  >
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select size" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {selectedType?.sizes.map((size) => (
-                        <SelectItem key={size} value={size}>
-                          {size}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">Add Configuration</CardTitle>
+            <CardDescription className="text-xs">
+              Save a model configuration for benchmarking
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="text-sm font-medium">Name</label>
+                <Input
+                  placeholder="My Model"
+                  value={newModel.name}
+                  onChange={(e) =>
+                    setNewModel((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="mt-1.5"
+                />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowAddForm(false)}
+              <div>
+                <label className="text-sm font-medium">Type</label>
+                <Select
+                  value={newModel.model_type}
+                  onValueChange={(value) =>
+                    setNewModel((prev) => ({
+                      ...prev,
+                      model_type: value,
+                      size: "",
+                    }))
+                  }
                 >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAddModel}
-                  disabled={!newModel.name || !newModel.model_type}
-                >
-                  Add Model
-                </Button>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modelTypes.map((type) => (
+                      <SelectItem key={type.type} value={type.type}>
+                        {type.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+              <div>
+                <label className="text-sm font-medium">Size</label>
+                <Select
+                  value={newModel.size}
+                  onValueChange={(value) =>
+                    setNewModel((prev) => ({ ...prev, size: value }))
+                  }
+                  disabled={!selectedType}
+                >
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {selectedType?.sizes.map((size) => (
+                      <SelectItem key={size} value={size}>
+                        {size}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAddModel}
+                disabled={!newModel.name || !newModel.model_type}
+              >
+                Save
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Available Model Types */}
+      {/* Model Families Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Supported Model Types</CardTitle>
-          <CardDescription>
-            Built-in support for popular model families
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Supported Models</CardTitle>
+          <CardDescription className="text-xs">
+            Open-weight model families with built-in loader support
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {modelTypes.map((type, index) => (
-              <motion.div
-                key={type.type}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative overflow-hidden rounded-lg border p-4 transition-all hover:border-primary/50"
-              >
-                <div
-                  className={`absolute inset-0 bg-gradient-to-br ${
-                    modelColors[type.type] || "from-gray-500 to-gray-600"
-                  } opacity-0 transition-opacity group-hover:opacity-5`}
-                />
-                <div className="relative">
-                  <div
-                    className={`inline-flex rounded-lg bg-gradient-to-br ${
-                      modelColors[type.type] || "from-gray-500 to-gray-600"
-                    } p-2 text-white`}
+          <div className="border rounded-md">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left font-medium p-3">Model</th>
+                  <th className="text-left font-medium p-3">Type</th>
+                  <th className="text-left font-medium p-3">Available Sizes</th>
+                  <th className="text-left font-medium p-3 hidden md:table-cell">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modelTypes.map((type, index) => (
+                  <tr
+                    key={type.type}
+                    className={index !== modelTypes.length - 1 ? "border-b" : ""}
                   >
-                    {modelIcons[type.type] || <Cpu className="h-5 w-5" />}
-                  </div>
-                  <h3 className="mt-3 font-semibold">{type.name}</h3>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {type.sizes.map((size) => (
-                      <Badge
-                        key={size}
-                        variant="secondary"
-                        className="text-xs"
+                    <td className="p-3 font-medium">{type.name}</td>
+                    <td className="p-3">
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
+                        {type.type}
+                      </code>
+                    </td>
+                    <td className="p-3">
+                      <div className="flex flex-wrap gap-1">
+                        {type.sizes.slice(0, 5).map((size) => (
+                          <Badge
+                            key={size}
+                            variant="outline"
+                            className="text-xs font-normal"
+                          >
+                            {size}
+                          </Badge>
+                        ))}
+                        {type.sizes.length > 5 && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            +{type.sizes.length - 5}
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3 hidden md:table-cell">
+                      <a
+                        href={`https://huggingface.co/models?search=${type.name.toLowerCase()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                       >
-                        {size}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                        HuggingFace
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Saved Models */}
+      {/* Saved Configurations */}
       <Card>
-        <CardHeader>
-          <CardTitle>Saved Configurations</CardTitle>
-          <CardDescription>
-            Your custom model configurations for benchmarking
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Saved Configurations</CardTitle>
+          <CardDescription className="text-xs">
+            Custom model configurations for quick access
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-32 animate-pulse rounded-lg bg-muted/50"
+                  className="h-12 animate-pulse rounded-md bg-muted/50"
                 />
               ))}
             </div>
           ) : models.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="rounded-full bg-muted p-4">
-                <Settings2 className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="mt-4 font-medium">No saved models</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Add a model configuration to get started
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Settings2 className="h-8 w-8 text-muted-foreground/50" />
+              <p className="mt-3 text-sm text-muted-foreground">
+                No saved configurations
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => setShowAddForm(true)}
+              >
+                Add configuration
+              </Button>
             </div>
           ) : (
-            <motion.div
-              variants={container}
-              initial="hidden"
-              animate="show"
-              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-            >
+            <div className="space-y-2">
               {models.map((model) => (
-                <motion.div
+                <div
                   key={model.id}
-                  variants={item}
-                  className="group relative rounded-lg border p-4"
+                  className="group flex items-center justify-between rounded-md border p-3"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`rounded-lg bg-gradient-to-br ${
-                          modelColors[model.model_type] ||
-                          "from-gray-500 to-gray-600"
-                        } p-2 text-white`}
-                      >
-                        {modelIcons[model.model_type] || (
-                          <Cpu className="h-4 w-4" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium">{model.name}</p>
-                        <p className="text-sm text-muted-foreground capitalize">
-                          {model.model_type}
-                          {model.size && ` • ${model.size}`}
-                        </p>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted">
+                      <Cpu className="h-4 w-4" />
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="opacity-0 transition-opacity group-hover:opacity-100"
-                      onClick={() => handleDeleteModel(model.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <div>
+                      <p className="font-medium text-sm">{model.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {model.model_type}
+                        {model.size && ` · ${model.size}`}
+                      </p>
+                    </div>
                   </div>
-                  <div className="mt-3 text-xs text-muted-foreground">
-                    Created {new Date(model.created_at).toLocaleDateString()}
-                  </div>
-                </motion.div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 opacity-0 group-hover:opacity-100"
+                    onClick={() => handleDeleteModel(model.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                  </Button>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
         </CardContent>
       </Card>

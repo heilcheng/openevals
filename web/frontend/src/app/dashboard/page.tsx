@@ -13,6 +13,8 @@ import {
   Trophy,
   Activity,
   TrendingUp,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -174,7 +176,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Model evaluation and benchmarking overview
+            Open-source LLM evaluation framework
           </p>
         </div>
         <Link href="/dashboard/benchmarks/new">
@@ -212,7 +214,7 @@ export default function DashboardPage() {
         {[
           {
             title: "Run Benchmark",
-            description: "Start a new model evaluation",
+            description: "Evaluate models on standardized tasks",
             icon: Play,
             href: "/dashboard/benchmarks/new",
           },
@@ -224,7 +226,7 @@ export default function DashboardPage() {
           },
           {
             title: "Leaderboard",
-            description: "View model rankings",
+            description: "View aggregated rankings",
             icon: Trophy,
             href: "/dashboard/leaderboard",
           },
@@ -311,6 +313,37 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Resources for Researchers */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">Resources</CardTitle>
+          <CardDescription className="text-xs">
+            Documentation and references
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { title: "Documentation", href: "/docs", icon: BookOpen },
+              { title: "API Reference", href: "/api/docs", icon: ExternalLink },
+              { title: "GitHub", href: "https://github.com/heilcheng/openevals", icon: ExternalLink },
+              { title: "Paper", href: "#", icon: ExternalLink },
+            ].map((link) => (
+              <a
+                key={link.title}
+                href={link.href}
+                target={link.href.startsWith("http") ? "_blank" : undefined}
+                rel={link.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="flex items-center gap-2 rounded-md border p-3 text-sm hover:bg-accent transition-colors"
+              >
+                <link.icon className="h-4 w-4 text-muted-foreground" />
+                {link.title}
+              </a>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -10,6 +10,7 @@ import {
   Settings,
   Cpu,
   ListChecks,
+  FileText,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -62,11 +63,11 @@ export function Sidebar() {
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="flex h-14 items-center border-b px-4">
-            <Link href="/dashboard" className="flex items-center">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <FileText className="h-5 w-5 lg:hidden" />
               <span className="hidden text-sm font-semibold tracking-tight lg:block">
-                Benchmark Suite
+                OpenEvals
               </span>
-              <span className="text-sm font-semibold lg:hidden">BS</span>
             </Link>
           </div>
 
@@ -99,7 +100,7 @@ export function Sidebar() {
             })}
           </nav>
 
-          {/* Settings */}
+          {/* Footer */}
           <div className="border-t p-2">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -118,6 +119,11 @@ export function Sidebar() {
                 Settings
               </TooltipContent>
             </Tooltip>
+            <div className="hidden lg:block px-3 py-2 mt-2">
+              <p className="text-xs text-muted-foreground">
+                v1.0.0
+              </p>
+            </div>
           </div>
         </div>
       </aside>

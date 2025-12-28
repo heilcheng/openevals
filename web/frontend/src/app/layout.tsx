@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LLM Benchmark Suite",
-  description: "Systematic evaluation framework for large language models",
+  title: "OpenEvals - LLM Benchmark Suite",
+  description: "Open-source evaluation framework for large language models",
 };
 
 export default function RootLayout({
