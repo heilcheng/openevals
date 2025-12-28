@@ -1,6 +1,6 @@
-# Gemma Benchmark Web Platform
+# Benchmark Suite Web Platform
 
-A web-based interface for the Gemma Benchmark evaluation suite, designed to facilitate systematic evaluation and comparison of large language models across standardized benchmark tasks.
+A web-based interface for the LLM evaluation framework, designed for systematic benchmarking and comparison of large language models.
 
 ## Overview
 
@@ -131,8 +131,6 @@ Access the web interface at `http://localhost:3000`.
 
 ## Supported Benchmark Tasks
 
-The platform supports the following evaluation tasks:
-
 | Task | Description | Primary Metric |
 |------|-------------|----------------|
 | GSM8K | Grade school math word problems | Accuracy |
@@ -157,7 +155,7 @@ Additional tasks can be registered through the `gemma_benchmark` task factory.
 
 **Backend** (`.env`):
 ```
-DATABASE_URL=sqlite:///./gemma_benchmark.db
+DATABASE_URL=sqlite:///./benchmark.db
 ```
 
 **Frontend** (`.env.local`):
@@ -170,7 +168,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 The default configuration uses SQLite for development. For production deployments, configure PostgreSQL:
 
 ```
-DATABASE_URL=postgresql://user:password@host:5432/gemma_benchmark
+DATABASE_URL=postgresql://user:password@host:5432/benchmark
 ```
 
 ## Development
@@ -213,16 +211,15 @@ npm run build
 npm start
 ```
 
-For containerized deployments, Dockerfiles can be added for both services.
-
 ## Citation
 
-If you use this platform in your research, please cite the Gemma Benchmark suite:
+If you use this platform in your research, please cite:
 
 ```bibtex
 @software{gemma_benchmark,
-  title = {Gemma Benchmark: A Framework for LLM Evaluation},
-  year = {2024},
+  author = {Hailey Cheng},
+  title = {Gemma Benchmarking Suite: A Systematic Evaluation Framework for Large Language Models},
+  year = {2025},
   url = {https://github.com/heilcheng/gemma-benchmark}
 }
 ```

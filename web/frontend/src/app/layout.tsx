@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Gemma Benchmark",
-  description: "Benchmark and evaluate language models with ease",
-  icons: {
-    icon: "/favicon.ico",
-  },
+  title: "LLM Benchmark Suite",
+  description: "Systematic evaluation framework for large language models",
 };
 
 export default function RootLayout({
@@ -16,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <body className="min-h-screen bg-grid-pattern">
+      <body className="min-h-screen bg-background antialiased">
         {children}
       </body>
     </html>

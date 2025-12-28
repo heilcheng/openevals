@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Play,
@@ -59,24 +58,20 @@ export function Sidebar() {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <aside className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-background/80 backdrop-blur-sm lg:w-64">
+      <aside className="fixed left-0 top-0 z-40 h-screen w-16 border-r bg-background lg:w-56">
         <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center border-b px-4">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <span className="text-lg font-bold text-primary-foreground">
-                  G
-                </span>
-              </div>
-              <span className="hidden text-lg font-semibold lg:block">
-                Gemma Bench
+          {/* Header */}
+          <div className="flex h-14 items-center border-b px-4">
+            <Link href="/dashboard" className="flex items-center">
+              <span className="hidden text-sm font-semibold tracking-tight lg:block">
+                Benchmark Suite
               </span>
+              <span className="text-sm font-semibold lg:hidden">BS</span>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 p-2">
+          <nav className="flex-1 space-y-0.5 p-2">
             {navItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -88,25 +83,12 @@ export function Sidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        "relative flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                        isActive && "text-foreground"
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                        isActive && "bg-accent text-foreground font-medium"
                       )}
                     >
-                      {isActive && (
-                        <motion.div
-                          layoutId="sidebar-active"
-                          className="absolute inset-0 rounded-lg bg-accent"
-                          transition={{
-                            type: "spring",
-                            stiffness: 500,
-                            damping: 30,
-                          }}
-                        />
-                      )}
-                      <item.icon className="relative z-10 h-5 w-5" />
-                      <span className="relative z-10 hidden lg:block">
-                        {item.title}
-                      </span>
+                      <item.icon className="h-4 w-4" />
+                      <span className="hidden lg:block">{item.title}</span>
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent side="right" className="lg:hidden">
@@ -124,11 +106,11 @@ export function Sidebar() {
                 <Link
                   href="/dashboard/settings"
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-                    pathname === "/dashboard/settings" && "bg-accent text-foreground"
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground",
+                    pathname === "/dashboard/settings" && "bg-accent text-foreground font-medium"
                   )}
                 >
-                  <Settings className="h-5 w-5" />
+                  <Settings className="h-4 w-4" />
                   <span className="hidden lg:block">Settings</span>
                 </Link>
               </TooltipTrigger>
