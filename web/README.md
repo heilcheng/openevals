@@ -133,21 +133,33 @@ Access the web interface at `http://localhost:3000`.
 
 | Task | Description | Primary Metric |
 |------|-------------|----------------|
+| MMLU | Multitask language understanding (57 subjects) | Accuracy |
 | GSM8K | Grade school math word problems | Accuracy |
-| TruthfulQA | Truthfulness evaluation | MC1/MC2 Accuracy |
-| MMLU | Multitask language understanding | Accuracy |
+| MATH | Competition mathematics (AMC, AIME, Olympiad) | Accuracy |
+| HumanEval | Python code generation | Pass@k |
+| TruthfulQA | Truthfulness evaluation | MC1/MC2 |
 | HellaSwag | Commonsense reasoning | Accuracy |
+| ARC | Science reasoning (Easy/Challenge) | Accuracy |
+| WinoGrande | Winograd Schema Challenge | Accuracy |
+| GPQA | Graduate-level science Q&A | Accuracy |
+| IFEval | Instruction following | Strict/Loose Accuracy |
+| BBH | BIG-Bench Hard reasoning | Accuracy |
 
 Additional tasks can be registered through the `gemma_benchmark` task factory.
 
 ## Supported Model Types
 
-| Type | Models | Configuration |
-|------|--------|---------------|
-| `gemma` | Gemma, Gemma 2 | size, variant |
-| `mistral` | Mistral | size |
-| `llama` | Llama 2, Llama 3 | size, version |
-| `huggingface` | Any HuggingFace model | model_id |
+| Type | Models | Sizes |
+|------|--------|-------|
+| `gemma` | Gemma, Gemma 2 | 2B, 7B, 9B, 27B |
+| `gemma3` | Gemma 3 | 1B, 4B, 12B, 27B |
+| `llama3` | Llama 3, 3.1, 3.2 | 1B - 405B |
+| `mistral` | Mistral, Mixtral | 7B, 8x7B, 8x22B |
+| `qwen2.5` | Qwen 2, Qwen 2.5 | 0.5B - 72B |
+| `deepseek` | DeepSeek, DeepSeek-R1 | 1.5B - 671B |
+| `phi3` | Phi-3 | Mini, Small, Medium |
+| `olmo` | OLMo | 1B, 7B |
+| `huggingface` | Any HuggingFace model | Custom |
 
 ## Configuration
 

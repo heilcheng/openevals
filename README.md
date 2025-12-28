@@ -87,13 +87,33 @@ python -m gemma_benchmark.scripts.run_benchmark \
 | Benchmark   | Category         | Description                                    | Metrics                    |
 |-------------|------------------|------------------------------------------------|----------------------------|
 | MMLU        | Knowledge        | 57 subjects spanning STEM, humanities, social sciences | Per-subject accuracy       |
+| MMLU-Pro    | Knowledge        | Enhanced MMLU with more challenging questions  | Accuracy                   |
 | GSM8K       | Mathematical     | Grade school math word problems                | Exact match accuracy       |
+| MATH        | Mathematical     | Competition math (AMC, AIME, Olympiad)         | Accuracy                   |
 | HumanEval   | Code Generation  | Python function completion tasks               | Pass@k                     |
+| MBPP        | Code Generation  | Mostly Basic Python Problems                   | Pass@k                     |
 | ARC         | Reasoning        | Science questions (Easy and Challenge splits)  | Multiple choice accuracy   |
+| HellaSwag   | Reasoning        | Commonsense reasoning about situations         | Accuracy                   |
+| WinoGrande  | Reasoning        | Large-scale Winograd Schema Challenge          | Accuracy                   |
 | TruthfulQA  | Truthfulness     | Questions probing common misconceptions        | MC1/MC2 accuracy           |
+| GPQA        | Expert Knowledge | Graduate-level physics, biology, chemistry     | Accuracy                   |
+| IFEval      | Instruction      | Instruction following evaluation               | Strict/Loose accuracy      |
+| BBH         | Reasoning        | BIG-Bench Hard - 23 challenging tasks          | Accuracy                   |
 | Efficiency  | Performance      | Computational resource utilization             | Tokens/sec, memory, latency|
 
 ## Supported Models
+
+| Family       | Variants                                      | Sizes                              |
+|--------------|-----------------------------------------------|-----------------------------------|
+| Gemma        | Gemma, Gemma 2                               | 2B, 7B, 9B, 27B                   |
+| Gemma 3      | Gemma 3                                      | 1B, 4B, 12B, 27B                  |
+| Llama 3      | Llama 3, 3.1, 3.2                            | 1B, 3B, 8B, 70B, 405B             |
+| Mistral      | Mistral, Mixtral                             | 7B, 8x7B, 8x22B                   |
+| Qwen         | Qwen 2, Qwen 2.5                             | 0.5B - 72B                        |
+| DeepSeek     | DeepSeek, DeepSeek-R1                        | 1.5B - 671B                       |
+| Phi          | Phi-3                                         | Mini, Small, Medium               |
+| OLMo         | OLMo                                         | 1B, 7B                            |
+| HuggingFace  | Any model on HuggingFace Hub                 | Custom                            |
 
 ### Configuration Examples
 
@@ -104,15 +124,24 @@ models:
     size: 2b
     variant: it  # instruction-tuned
 
+  llama3-8b:
+    type: llama3
+    size: 8b
+    variant: instruct
+
+  qwen2.5-7b:
+    type: qwen2.5
+    size: 7b
+    variant: instruct
+
+  deepseek-r1-7b:
+    type: deepseek-r1
+    size: 7b
+
   mistral-7b:
     type: mistral
     size: 7b
     variant: instruct
-
-  llama2-7b:
-    type: llama
-    size: 7b
-    variant: chat
 
   custom-model:
     type: huggingface

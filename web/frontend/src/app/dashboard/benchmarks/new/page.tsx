@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { ArrowLeft, Play, Plus, X, Check, Cpu, ListChecks } from "lucide-react";
+import { ArrowLeft, Play, X, Check, Cpu, ListChecks } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,39 @@ import {
   type TaskInfo,
 } from "@/lib/api";
 
+// Default model types
+const defaultModelTypes: ModelTypeInfo[] = [
+  { type: "gemma", name: "Gemma", sizes: ["2b", "7b", "9b", "27b"], default_size: "7b" },
+  { type: "gemma3", name: "Gemma 3", sizes: ["1b", "4b", "12b", "27b"], default_size: "4b" },
+  { type: "llama3", name: "Llama 3", sizes: ["8b", "70b"], default_size: "8b" },
+  { type: "llama3.1", name: "Llama 3.1", sizes: ["8b", "70b", "405b"], default_size: "8b" },
+  { type: "llama3.2", name: "Llama 3.2", sizes: ["1b", "3b", "11b", "90b"], default_size: "3b" },
+  { type: "mistral", name: "Mistral", sizes: ["7b"], default_size: "7b" },
+  { type: "mixtral", name: "Mixtral", sizes: ["8x7b", "8x22b"], default_size: "8x7b" },
+  { type: "qwen2", name: "Qwen 2", sizes: ["0.5b", "1.5b", "7b", "72b"], default_size: "7b" },
+  { type: "qwen2.5", name: "Qwen 2.5", sizes: ["0.5b", "1.5b", "3b", "7b", "14b", "32b", "72b"], default_size: "7b" },
+  { type: "deepseek", name: "DeepSeek", sizes: ["7b", "67b"], default_size: "7b" },
+  { type: "deepseek-r1", name: "DeepSeek-R1", sizes: ["1.5b", "7b", "8b", "14b", "32b", "70b", "671b"], default_size: "7b" },
+  { type: "phi3", name: "Phi-3", sizes: ["mini", "small", "medium"], default_size: "mini" },
+  { type: "olmo", name: "OLMo", sizes: ["1b", "7b"], default_size: "7b" },
+  { type: "huggingface", name: "HuggingFace", sizes: ["custom"], default_size: "custom" },
+];
+
+// Default tasks
+const defaultTasks: TaskInfo[] = [
+  { type: "mmlu", name: "MMLU", description: "Multitask language understanding across 57 subjects", metrics: ["accuracy"] },
+  { type: "gsm8k", name: "GSM8K", description: "Grade school math word problems", metrics: ["accuracy"] },
+  { type: "truthfulqa", name: "TruthfulQA", description: "Truthfulness evaluation", metrics: ["mc1", "mc2"] },
+  { type: "hellaswag", name: "HellaSwag", description: "Commonsense reasoning", metrics: ["accuracy"] },
+  { type: "arc", name: "ARC", description: "Science reasoning questions", metrics: ["accuracy"] },
+  { type: "winogrande", name: "WinoGrande", description: "Commonsense reasoning", metrics: ["accuracy"] },
+  { type: "humaneval", name: "HumanEval", description: "Python code generation", metrics: ["pass@1"] },
+  { type: "gpqa", name: "GPQA", description: "Graduate-level science Q&A", metrics: ["accuracy"] },
+  { type: "math", name: "MATH", description: "Competition mathematics", metrics: ["accuracy"] },
+  { type: "ifeval", name: "IFEval", description: "Instruction following", metrics: ["accuracy"] },
+  { type: "bbh", name: "BBH", description: "BIG-Bench Hard reasoning tasks", metrics: ["accuracy"] },
+];
+
 export default function NewBenchmarkPage() {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -40,14 +72,26 @@ export default function NewBenchmarkPage() {
     async function fetchData() {
       try {
         const [modelsData, tasksData] = await Promise.all([
-          modelAPI.types(),
-          taskAPI.list(),
+          modelAPI.types().catch(() => defaultModelTypes),
+          taskAPI.list().catch(() => defaultTasks),
         ]);
-        setModelTypes(modelsData);
-        setTasks(tasksData);
+
+        // Merge with defaults and ensure metrics exist
+        const mergedModels = modelsData.length > 0 ? modelsData : defaultModelTypes;
+        const mergedTasks = tasksData.map((task) => {
+          const defaultTask = defaultTasks.find((t) => t.type === task.type);
+          return {
+            ...task,
+            metrics: task.metrics || defaultTask?.metrics || ["accuracy"],
+          };
+        });
+
+        setModelTypes(mergedModels);
+        setTasks(mergedTasks.length > 0 ? mergedTasks : defaultTasks);
       } catch (error) {
         console.error("Failed to fetch data:", error);
-        setError("Failed to load configuration options");
+        setModelTypes(defaultModelTypes);
+        setTasks(defaultTasks);
       } finally {
         setIsLoading(false);
       }
@@ -103,61 +147,55 @@ export default function NewBenchmarkPage() {
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="loader" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Link href="/dashboard/benchmarks">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="h-8 w-8">
+            <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold">Create New Benchmark</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-xl font-semibold">New Benchmark</h1>
+          <p className="text-sm text-muted-foreground">
             Configure and run a benchmark evaluation
           </p>
         </div>
       </div>
 
       {/* Form */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
+      <div className="space-y-6">
         {/* Basic Info */}
         <Card>
-          <CardHeader>
-            <CardTitle>Basic Information</CardTitle>
-            <CardDescription>
-              Give your benchmark a name and description
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base">Basic Information</CardTitle>
+            <CardDescription className="text-xs">
+              Optional name and description for this run
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Name (optional)</label>
+              <label className="text-sm font-medium">Name</label>
               <Input
                 placeholder="My Benchmark Run"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="mt-1"
+                className="mt-1.5"
               />
             </div>
             <div>
-              <label className="text-sm font-medium">
-                Description (optional)
-              </label>
+              <label className="text-sm font-medium">Description</label>
               <Input
                 placeholder="Evaluating model performance on reasoning tasks..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1"
+                className="mt-1.5"
               />
             </div>
           </CardContent>
@@ -165,54 +203,51 @@ export default function NewBenchmarkPage() {
 
         {/* Model Selection */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
-              <Cpu className="h-5 w-5 text-primary" />
-              <CardTitle>Select Models</CardTitle>
+              <Cpu className="h-4 w-4" />
+              <CardTitle className="text-base">Select Models</CardTitle>
             </div>
-            <CardDescription>
-              Choose which models to evaluate ({selectedModels.length} selected)
+            <CardDescription className="text-xs">
+              {selectedModels.length} model{selectedModels.length !== 1 ? "s" : ""} selected
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {modelTypes.map((model) => (
-                <motion.button
+                <button
                   key={model.type}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => toggleModel(model.type)}
-                  className={`relative flex flex-col items-start rounded-lg border p-4 text-left transition-colors ${
+                  className={`relative flex flex-col items-start rounded-md border p-3 text-left transition-colors ${
                     selectedModels.includes(model.type)
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-accent"
+                      ? "border-foreground bg-accent"
+                      : "hover:bg-accent/50"
                   }`}
                 >
                   {selectedModels.includes(model.type) && (
-                    <div className="absolute right-2 top-2 rounded-full bg-primary p-1">
-                      <Check className="h-3 w-3 text-white" />
+                    <div className="absolute right-2 top-2 rounded-full bg-foreground p-0.5">
+                      <Check className="h-2.5 w-2.5 text-background" />
                     </div>
                   )}
-                  <span className="font-medium">{model.name}</span>
-                  <span className="mt-1 text-sm text-muted-foreground">
-                    Sizes: {model.sizes.join(", ")}
+                  <span className="font-medium text-sm">{model.name}</span>
+                  <span className="mt-0.5 text-xs text-muted-foreground">
+                    {model.sizes.join(", ")}
                   </span>
-                </motion.button>
+                </button>
               ))}
             </div>
 
-            {/* Selected Models */}
             {selectedModels.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-1.5">
                 {selectedModels.map((modelId) => (
-                  <Badge key={modelId} variant="secondary" className="gap-1">
+                  <Badge key={modelId} variant="secondary" className="gap-1 text-xs">
                     {modelTypes.find((m) => m.type === modelId)?.name || modelId}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleModel(modelId);
                       }}
-                      className="ml-1 hover:text-destructive"
+                      className="ml-0.5 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -225,62 +260,58 @@ export default function NewBenchmarkPage() {
 
         {/* Task Selection */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-4">
             <div className="flex items-center gap-2">
-              <ListChecks className="h-5 w-5 text-primary" />
-              <CardTitle>Select Tasks</CardTitle>
+              <ListChecks className="h-4 w-4" />
+              <CardTitle className="text-base">Select Tasks</CardTitle>
             </div>
-            <CardDescription>
-              Choose which benchmark tasks to run ({selectedTasks.length}{" "}
-              selected)
+            <CardDescription className="text-xs">
+              {selectedTasks.length} task{selectedTasks.length !== 1 ? "s" : ""} selected
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {tasks.map((task) => (
-                <motion.button
+                <button
                   key={task.type}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={() => toggleTask(task.type)}
-                  className={`relative flex flex-col items-start rounded-lg border p-4 text-left transition-colors ${
+                  className={`relative flex flex-col items-start rounded-md border p-3 text-left transition-colors ${
                     selectedTasks.includes(task.type)
-                      ? "border-primary bg-primary/5"
-                      : "hover:bg-accent"
+                      ? "border-foreground bg-accent"
+                      : "hover:bg-accent/50"
                   }`}
                 >
                   {selectedTasks.includes(task.type) && (
-                    <div className="absolute right-2 top-2 rounded-full bg-primary p-1">
-                      <Check className="h-3 w-3 text-white" />
+                    <div className="absolute right-2 top-2 rounded-full bg-foreground p-0.5">
+                      <Check className="h-2.5 w-2.5 text-background" />
                     </div>
                   )}
-                  <span className="font-medium">{task.name}</span>
-                  <span className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                  <span className="font-medium text-sm">{task.name}</span>
+                  <span className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
                     {task.description}
                   </span>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {task.metrics.map((metric) => (
-                      <Badge key={metric} variant="outline" className="text-xs">
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {(task.metrics || []).map((metric) => (
+                      <Badge key={metric} variant="outline" className="text-xs py-0">
                         {metric}
                       </Badge>
                     ))}
                   </div>
-                </motion.button>
+                </button>
               ))}
             </div>
 
-            {/* Selected Tasks */}
             {selectedTasks.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-1.5">
                 {selectedTasks.map((taskType) => (
-                  <Badge key={taskType} variant="secondary" className="gap-1">
+                  <Badge key={taskType} variant="secondary" className="gap-1 text-xs">
                     {tasks.find((t) => t.type === taskType)?.name || taskType}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleTask(taskType);
                       }}
-                      className="ml-1 hover:text-destructive"
+                      className="ml-0.5 hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -293,19 +324,15 @@ export default function NewBenchmarkPage() {
 
         {/* Error */}
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-destructive"
-          >
+          <div className="rounded-md border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
             {error}
-          </motion.div>
+          </div>
         )}
 
         {/* Submit */}
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end gap-3">
           <Link href="/dashboard/benchmarks">
-            <Button variant="outline">Cancel</Button>
+            <Button variant="outline" size="sm">Cancel</Button>
           </Link>
           <Button
             onClick={handleSubmit}
@@ -314,22 +341,23 @@ export default function NewBenchmarkPage() {
               selectedModels.length === 0 ||
               selectedTasks.length === 0
             }
+            size="sm"
             className="gap-2"
           >
             {isSubmitting ? (
               <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 Creating...
               </>
             ) : (
               <>
-                <Play className="h-4 w-4" />
+                <Play className="h-3 w-3" />
                 Start Benchmark
               </>
             )}
           </Button>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
