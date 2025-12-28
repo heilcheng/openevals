@@ -1,130 +1,232 @@
 # Gemma Benchmark Web Platform
 
-A full interactive web platform for the Gemma Benchmark suite. Evaluate and compare language models across multiple benchmarks with real-time progress tracking, visualizations, and leaderboards.
+A web-based interface for the Gemma Benchmark evaluation suite, designed to facilitate systematic evaluation and comparison of large language models across standardized benchmark tasks.
 
-## Features
+## Overview
 
-- 🚀 **Run Benchmarks** - Configure and execute benchmarks with custom model/task selections
-- 📊 **Live Progress** - Real-time WebSocket updates during benchmark execution
-- 📈 **Visualizations** - Performance charts, radar plots, and heatmaps
-- 🏆 **Leaderboard** - Ranked model performance across tasks
-- 🎨 **Modern UI** - Beautiful dark theme with animations and effects
+This platform provides researchers with a streamlined workflow for:
 
-## Tech Stack
+- Configuring and executing benchmark evaluations across multiple models
+- Monitoring evaluation progress in real-time via WebSocket connections
+- Analyzing results through interactive visualizations
+- Comparing model performance across tasks via aggregated leaderboards
+
+The system integrates directly with the `gemma_benchmark` core library, supporting all registered model loaders and benchmark tasks.
+
+## Architecture
+
+```
+web/
+├── backend/           # FastAPI REST API + WebSocket server
+│   ├── app/
+│   │   ├── api/v1/    # Versioned API endpoints
+│   │   ├── models/    # SQLAlchemy ORM models
+│   │   ├── schemas/   # Pydantic request/response schemas
+│   │   ├── services/  # Business logic layer
+│   │   └── utils/     # Benchmark adapter and utilities
+│   └── requirements.txt
+│
+└── frontend/          # Next.js 15 web application
+    ├── src/
+    │   ├── app/       # Page routes (App Router)
+    │   ├── components/# React components
+    │   ├── hooks/     # Custom React hooks
+    │   ├── lib/       # API client and utilities
+    │   └── stores/    # Zustand state management
+    └── package.json
+```
+
+## Technical Stack
+
+### Backend
+- **FastAPI** - Async Python web framework
+- **SQLAlchemy 2.0** - ORM with async support
+- **SQLite / PostgreSQL** - Configurable database backend
+- **WebSocket** - Real-time progress streaming
 
 ### Frontend
 - **Next.js 15** - React framework with App Router
-- **Tailwind CSS** - Utility-first CSS
-- **shadcn/ui** - Reusable components
-- **Framer Motion** - Animations
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
 - **Recharts** - Data visualization
-- **Zustand** - State management
+- **Zustand** - Lightweight state management
 
-### Backend
-- **FastAPI** - Python async API framework
-- **SQLAlchemy** - Database ORM
-- **SQLite/PostgreSQL** - Database
-- **WebSocket** - Real-time updates
+## Installation
 
-## Quick Start
+### Prerequisites
 
-### 1. Start the Backend
+- Python 3.10+
+- Node.js 18+
+- The `gemma_benchmark` package installed in the Python environment
+
+### Backend Setup
 
 ```bash
 cd web/backend
 pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
 ```
 
-### 2. Start the Frontend
+### Frontend Setup
 
 ```bash
 cd web/frontend
 npm install
+```
+
+## Running the Platform
+
+### Start the Backend Server
+
+```bash
+cd web/backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+The API documentation is available at `http://localhost:8000/api/docs`.
+
+### Start the Frontend Development Server
+
+```bash
+cd web/frontend
 npm run dev
 ```
 
-### 3. Access the Platform
+Access the web interface at `http://localhost:3000`.
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+## API Reference
 
-## Project Structure
-
-```
-web/
-├── backend/
-│   ├── app/
-│   │   ├── api/v1/          # API endpoints
-│   │   ├── models/          # Database models
-│   │   ├── schemas/         # Pydantic schemas
-│   │   ├── services/        # Business logic
-│   │   ├── utils/           # Utilities
-│   │   └── main.py          # FastAPI app
-│   └── requirements.txt
-│
-└── frontend/
-    ├── src/
-    │   ├── app/             # Next.js pages
-    │   │   └── dashboard/   # Dashboard routes
-    │   ├── components/      # React components
-    │   │   ├── ui/          # shadcn components
-    │   │   ├── charts/      # Visualization
-    │   │   ├── magic/       # Magic UI effects
-    │   │   └── layout/      # Layout components
-    │   ├── hooks/           # Custom hooks
-    │   ├── lib/             # Utilities
-    │   └── stores/          # Zustand stores
-    └── package.json
-```
-
-## API Endpoints
+### Benchmark Endpoints
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/v1/benchmarks` | List benchmark runs |
-| POST | `/api/v1/benchmarks` | Create new benchmark |
-| GET | `/api/v1/benchmarks/{id}` | Get benchmark details |
-| POST | `/api/v1/benchmarks/{id}/cancel` | Cancel running benchmark |
-| GET | `/api/v1/models` | List saved model configs |
-| GET | `/api/v1/tasks` | List available tasks |
-| GET | `/api/v1/benchmarks/leaderboard` | Get leaderboard |
-| WS | `/ws/benchmark/{id}` | Real-time progress |
+| `GET` | `/api/v1/benchmarks` | List all benchmark runs |
+| `POST` | `/api/v1/benchmarks` | Create and start a new benchmark run |
+| `GET` | `/api/v1/benchmarks/{id}` | Retrieve benchmark details and results |
+| `POST` | `/api/v1/benchmarks/{id}/cancel` | Cancel a running benchmark |
+| `DELETE` | `/api/v1/benchmarks/{id}` | Delete a benchmark run |
+| `GET` | `/api/v1/benchmarks/stats` | Aggregate statistics |
+| `GET` | `/api/v1/benchmarks/leaderboard` | Model rankings by performance |
 
-## Environment Variables
+### Model Configuration Endpoints
 
-### Frontend (.env.local)
-```
-NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-```
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/models` | List saved model configurations |
+| `POST` | `/api/v1/models` | Create a new model configuration |
+| `GET` | `/api/v1/models/types` | Available model types and defaults |
+| `DELETE` | `/api/v1/models/{id}` | Delete a model configuration |
 
-### Backend (.env)
+### Task Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/tasks` | List available benchmark tasks |
+| `GET` | `/api/v1/tasks/{name}` | Task details and default configuration |
+
+### WebSocket
+
+| Endpoint | Description |
+|----------|-------------|
+| `ws://host/ws/benchmark/{run_id}` | Real-time progress updates for a benchmark run |
+
+## Supported Benchmark Tasks
+
+The platform supports the following evaluation tasks:
+
+| Task | Description | Primary Metric |
+|------|-------------|----------------|
+| GSM8K | Grade school math word problems | Accuracy |
+| TruthfulQA | Truthfulness evaluation | MC1/MC2 Accuracy |
+| MMLU | Multitask language understanding | Accuracy |
+| HellaSwag | Commonsense reasoning | Accuracy |
+
+Additional tasks can be registered through the `gemma_benchmark` task factory.
+
+## Supported Model Types
+
+| Type | Models | Configuration |
+|------|--------|---------------|
+| `gemma` | Gemma, Gemma 2 | size, variant |
+| `mistral` | Mistral | size |
+| `llama` | Llama 2, Llama 3 | size, version |
+| `huggingface` | Any HuggingFace model | model_id |
+
+## Configuration
+
+### Environment Variables
+
+**Backend** (`.env`):
 ```
 DATABASE_URL=sqlite:///./gemma_benchmark.db
 ```
 
-## Screenshots
+**Frontend** (`.env.local`):
+```
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+```
 
-The platform features a cyberpunk-inspired dark theme with:
-- Animated gradient backgrounds
-- Spotlight cards with hover effects
-- Shimmer buttons
-- Real-time progress animations
-- Responsive design for all screen sizes
+### Database
+
+The default configuration uses SQLite for development. For production deployments, configure PostgreSQL:
+
+```
+DATABASE_URL=postgresql://user:password@host:5432/gemma_benchmark
+```
 
 ## Development
 
-### Frontend Development
+### Running Tests
+
 ```bash
-npm run dev    # Start development server
-npm run build  # Build for production
-npm run lint   # Run ESLint
+# Backend
+cd web/backend
+pytest
+
+# Frontend
+cd web/frontend
+npm test
 ```
 
-### Backend Development
+### Code Formatting
+
 ```bash
-uvicorn app.main:app --reload  # Start with hot reload
+# Backend
+black web/backend
+flake8 web/backend
+
+# Frontend
+npm run lint
+```
+
+## Production Deployment
+
+### Backend
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### Frontend
+
+```bash
+npm run build
+npm start
+```
+
+For containerized deployments, Dockerfiles can be added for both services.
+
+## Citation
+
+If you use this platform in your research, please cite the Gemma Benchmark suite:
+
+```bibtex
+@software{gemma_benchmark,
+  title = {Gemma Benchmark: A Framework for LLM Evaluation},
+  year = {2024},
+  url = {https://github.com/heilcheng/gemma-benchmark}
+}
 ```
 
 ## License
 
-MIT License - see the root LICENSE file for details.
+This project is released under the MIT License. See the root LICENSE file for details.
