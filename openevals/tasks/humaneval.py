@@ -2,27 +2,27 @@
 Benchmark for the HumanEval dataset for code generation.
 """
 
-import os
-import re
 import json
 import logging
-import tempfile
-import subprocess
+import os
 import platform
+import re
+import subprocess
 import sys
-from typing import Dict, Any, List, Optional, Set
-from datasets import load_dataset, Dataset
+import tempfile
+from typing import Any, Dict, List, Optional, Set
+
+from datasets import Dataset, load_dataset
 
 # Import resource module only if not on Windows
 if platform.system() != "Windows":
     import resource
 
 # Core benchmark interfaces
-from gemma_benchmark.core.interfaces import AbstractBenchmark, ModelInterface
+from openevals.core.interfaces import AbstractBenchmark, ModelInterface
 
 # Utilities for metrics
-from gemma_benchmark.utils.metrics import pass_at_k
-
+from openevals.utils.metrics import pass_at_k
 
 # Security configuration
 DANGEROUS_IMPORTS = {

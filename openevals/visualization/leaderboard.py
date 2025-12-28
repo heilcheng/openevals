@@ -1,13 +1,13 @@
 """
-Leaderboard generation for the Gemma Benchmarking Suite.
+Leaderboard generation for the OpenEvalsing Suite.
 
 This module provides tools to generate summary leaderboards from benchmark
 results, suitable for formal reports and academic use.
 """
 
-import logging
 import datetime
-from typing import Dict, Any, List, Optional
+import logging
+from typing import Any, Dict, List, Optional
 
 
 class LeaderboardGenerator:
@@ -24,7 +24,7 @@ class LeaderboardGenerator:
                     to customize leaderboard generation, such as defining
                     which tasks and metrics to include.
         """
-        self.logger = logging.getLogger("gemma_benchmark.leaderboard")
+        self.logger = logging.getLogger("openevals.leaderboard")
         self.config = config or {}
 
         # Defines the primary metric for each task to be included in the leaderboard.

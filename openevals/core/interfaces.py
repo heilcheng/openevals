@@ -324,7 +324,7 @@ class AbstractBenchmark(ABC):
         if self._logger is None:
             import logging
 
-            self._logger = logging.getLogger(f"gemma_benchmark.tasks.{self.name}")
+            self._logger = logging.getLogger(f"openevals.tasks.{self.name}")
         return self._logger
 
     @abstractmethod

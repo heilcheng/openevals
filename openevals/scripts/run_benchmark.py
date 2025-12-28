@@ -3,23 +3,23 @@
 Main script for running the Gemma benchmarking suite.
 """
 
-import os
-import sys
 import argparse
-import logging
 import datetime
-from pathlib import Path
-import pkgutil
 import importlib
+import logging
+import os
+import pkgutil
+import sys
+from pathlib import Path
 
 # Add parent directory to path to make imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from gemma_benchmark.core.benchmark import GemmaBenchmark
-from gemma_benchmark.visualization.charts import ChartGenerator
+from openevals.core.benchmark import GemmaBenchmark
 
 # Import for task registration
-from gemma_benchmark.core.interfaces import BenchmarkFactory, AbstractBenchmark
+from openevals.core.interfaces import AbstractBenchmark, BenchmarkFactory
+from openevals.visualization.charts import ChartGenerator
 
 
 def register_available_tasks():
@@ -28,16 +28,16 @@ def register_available_tasks():
     This allows new tasks to be added to the tasks folder without
     changing this script.
     """
-    logger = logging.getLogger("gemma_benchmark")
+    logger = logging.getLogger("openevals")
     logger.info("Registering available benchmark tasks...")
 
     registered_count = 0
     failed_modules = []
 
     try:
-        import gemma_benchmark.tasks
+        import openevals.tasks
 
-        package = gemma_benchmark.tasks
+        package = openevals.tasks
 
         # Walk through all modules in the tasks package
         for _, module_name, _ in pkgutil.walk_packages(
@@ -85,7 +85,7 @@ def register_available_tasks():
                 failed_modules.append((module_name, str(e)))
 
     except Exception as e:
-        logger.error(f"Failed to walk packages in gemma_benchmark.tasks: {e}")
+        logger.error(f"Failed to walk packages in openevals.tasks: {e}")
 
     # Log summary
     logger.info(f"Successfully registered {registered_count} benchmark tasks")
@@ -112,12 +112,12 @@ def register_available_tasks():
         )
 
         manual_tasks = [
-            ("gemma_benchmark.tasks.mmlu", "MMLUBenchmark", "mmlu"),
-            ("gemma_benchmark.tasks.gsm8k", "Gsm8kBenchmark", "gsm8k"),
-            ("gemma_benchmark.tasks.humaneval", "HumanevalBenchmark", "humaneval"),
-            ("gemma_benchmark.tasks.efficiency", "EfficiencyBenchmark", "efficiency"),
-            ("gemma_benchmark.tasks.arc", "ArcBenchmark", "arc"),
-            ("gemma_benchmark.tasks.truthfulqa", "TruthfulqaBenchmark", "truthfulqa"),
+            ("openevals.tasks.mmlu", "MMLUBenchmark", "mmlu"),
+            ("openevals.tasks.gsm8k", "Gsm8kBenchmark", "gsm8k"),
+            ("openevals.tasks.humaneval", "HumanevalBenchmark", "humaneval"),
+            ("openevals.tasks.efficiency", "EfficiencyBenchmark", "efficiency"),
+            ("openevals.tasks.arc", "ArcBenchmark", "arc"),
+            ("openevals.tasks.truthfulqa", "TruthfulqaBenchmark", "truthfulqa"),
         ]
 
         for module_path, class_name, task_type in manual_tasks:
@@ -161,10 +161,10 @@ def parse_args() -> argparse.Namespace:
 Examples:
   # Run all models and tasks in config
   %(prog)s --config configs/benchmark_config.yaml
-  
+
   # Run specific models and tasks
   %(prog)s --config configs/benchmark_config.yaml --models gemma-2b --tasks mmlu
-  
+
   # Run with visualization
   %(prog)s --config configs/benchmark_config.yaml --visualize
         """,
@@ -259,7 +259,7 @@ def main() -> None:
     # Register tasks before doing anything else
     register_available_tasks()
 
-    logger = logging.getLogger("gemma_benchmark")
+    logger = logging.getLogger("openevals")
 
     # Handle list commands
     if args.list_tasks:
@@ -270,7 +270,7 @@ def main() -> None:
         list_config_models(args.config)
         sys.exit(0)
 
-    logger.info("🚀 Starting Gemma Benchmark Suite")
+    logger.info("🚀 Starting OpenEvals Suite")
 
     # Create timestamp for results
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")

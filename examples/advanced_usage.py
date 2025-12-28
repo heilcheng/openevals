@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Advanced usage example for the Gemma Benchmarking Suite.
+Advanced usage example for the OpenEvalsing Suite.
 
 This script demonstrates advanced features:
 1. Multi-model comparison
@@ -22,10 +22,10 @@ from typing import Dict, Any
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gemma_benchmark.auth import AuthManager
-from gemma_benchmark.core.benchmark import GemmaBenchmark
-from gemma_benchmark.visualization.charts import ChartGenerator
-from gemma_benchmark.utils.metrics import (
+from openevals.auth import AuthManager
+from openevals.core.benchmark import GemmaBenchmark
+from openevals.visualization.charts import ChartGenerator
+from openevals.utils.metrics import (
     aggregate_results,
     calculate_confidence_interval,
 )
@@ -356,7 +356,7 @@ def main():
     setup_logging()
     logger = logging.getLogger("examples.advanced_usage")
 
-    logger.info("Starting Advanced Gemma Benchmark Example")
+    logger.info("Starting Advanced OpenEvals Example")
 
     logger.info("Checking for HuggingFace authentication token...")
     if not AuthManager().get_token():

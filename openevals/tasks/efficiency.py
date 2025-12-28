@@ -2,12 +2,12 @@
 Efficiency benchmarking for language models with enhanced system compatibility.
 """
 
-import time
+import gc
 import logging
 import platform
-import gc
-from typing import Dict, List, Any, Optional
+import time
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 try:
     import psutil
@@ -56,7 +56,7 @@ class SystemMonitor:
     """Cross-platform system monitoring utilities."""
 
     def __init__(self):
-        self.logger = logging.getLogger("gemma_benchmark.efficiency.monitor")
+        self.logger = logging.getLogger("openevals.efficiency.monitor")
 
     def get_memory_usage(self) -> float:
         """Get current memory usage in GB."""
@@ -187,7 +187,7 @@ class EfficiencyBenchmark:
         Args:
             config: Configuration dictionary for the benchmark
         """
-        self.logger = logging.getLogger("gemma_benchmark.tasks.efficiency")
+        self.logger = logging.getLogger("openevals.tasks.efficiency")
         self.config = config
         self.sample_prompts = config.get(
             "sample_prompts",

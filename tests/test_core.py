@@ -2,13 +2,14 @@
 Tests for the core benchmarking logic.
 """
 
-import pytest
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Core components to test
-from gemma_benchmark.core.benchmark import GemmaBenchmark, EvaluationError
-from gemma_benchmark.utils.config_validation import ConfigurationError
+from openevals.core.benchmark import EvaluationError, GemmaBenchmark
+from openevals.utils.config_validation import ConfigurationError
 
 # Sample valid and invalid configurations
 VALID_CONFIG = {
@@ -50,7 +51,7 @@ def test_benchmark_initialization_success(valid_config_file):
 
 def test_benchmark_initialization_file_not_found():
     """Test that initialization fails if the config file does not exist."""
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ConfigurationError, match="Configuration file not found"):
         GemmaBenchmark("non_existent_file.yaml")
 
 
@@ -78,7 +79,7 @@ def test_load_config_validation_error(tmp_path):
         GemmaBenchmark(str(config_file))
 
 
-@patch("gemma_benchmark.core.benchmark.get_model_manager")
+@patch("openevals.core.benchmark.get_model_manager")
 def test_load_models_success(mock_get_manager, valid_config_file):
     """Test that models are loaded correctly."""
     # Setup mock model manager and loader
@@ -97,7 +98,7 @@ def test_load_models_success(mock_get_manager, valid_config_file):
     assert benchmark.models["gemma-2b-test"] == mock_model
 
 
-@patch("gemma_benchmark.core.benchmark.BenchmarkFactory")
+@patch("openevals.core.benchmark.BenchmarkFactory")
 def test_load_tasks_success(mock_factory, valid_config_file):
     """Test that tasks are loaded correctly."""
     # Setup mock benchmark factory
@@ -122,8 +123,8 @@ def test_run_benchmarks_no_models_or_tasks(valid_config_file):
         benchmark.run_benchmarks()
 
 
-@patch("gemma_benchmark.core.benchmark.get_model_manager")
-@patch("gemma_benchmark.core.benchmark.BenchmarkFactory")
+@patch("openevals.core.benchmark.get_model_manager")
+@patch("openevals.core.benchmark.BenchmarkFactory")
 def test_run_benchmarks_evaluation_flow(
     mock_factory, mock_get_manager, valid_config_file
 ):

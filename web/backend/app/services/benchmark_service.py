@@ -14,7 +14,7 @@ from ..schemas.benchmark import (
 )
 from ..utils.benchmark_adapter import get_benchmark_adapter
 
-logger = logging.getLogger("gemma_benchmark.web.service")
+logger = logging.getLogger("openevals.web.service")
 
 
 class BenchmarkService:

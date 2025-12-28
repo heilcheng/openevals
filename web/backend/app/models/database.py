@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 # Database URL - SQLite for development
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./gemma_benchmark.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./openevals.db")
 
 # Create engine
 if DATABASE_URL.startswith("sqlite"):

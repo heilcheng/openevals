@@ -2,20 +2,17 @@
 Benchmark for the GSM8K dataset.
 """
 
-import re
 import random
-from typing import Dict, Any, List, Optional, Union
-from datasets import load_dataset, Dataset
+import re
+from typing import Any, Dict, List, Optional, Union
+
+from datasets import Dataset, load_dataset
 
 # Core benchmark interfaces
-from gemma_benchmark.core.interfaces import (
-    AbstractBenchmark,
-    ModelInterface,
-    BenchmarkResult,
-)
+from openevals.core.interfaces import AbstractBenchmark, BenchmarkResult, ModelInterface
 
 # Utility for parsing numerical answers
-from gemma_benchmark.utils.metrics import extract_numerical_answer, is_exact_match
+from openevals.utils.metrics import extract_numerical_answer, is_exact_match
 
 FEW_SHOT_PROMPT = """
 A grade school math problem.

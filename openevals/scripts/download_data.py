@@ -3,19 +3,19 @@
 Script to download benchmark datasets.
 """
 
-import os
-import sys
 import argparse
 import logging
+import os
+import sys
 from pathlib import Path
 
 # Add parent directory to path to make imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from gemma_benchmark.utils.data_downloader import (
-    download_mmlu_data,
+from openevals.utils.data_downloader import (
     download_gsm8k_data,
     download_humaneval_data,
+    download_mmlu_data,
 )
 
 
@@ -86,7 +86,7 @@ def main() -> None:
     args = parse_args()
     setup_logging(args.log_level)
 
-    logger = logging.getLogger("gemma_benchmark.scripts.download_data")
+    logger = logging.getLogger("openevals.scripts.download_data")
     logger.info("Starting data download")
 
     # Create base data directory
@@ -118,7 +118,7 @@ def main() -> None:
         print("  --gsm8k      Download GSM8K dataset")
         print("  --humaneval  Download HumanEval dataset")
         print("  --all        Download all datasets")
-        print("\nExample: python -m gemma_benchmark.scripts.download_data --mmlu")
+        print("\nExample: python -m openevals.scripts.download_data --mmlu")
     else:
         logger.info("Data download complete")
 

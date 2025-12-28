@@ -2,14 +2,15 @@
 Data downloading utilities using HuggingFace datasets.
 """
 
-import os
 import logging
+import os
+
 from datasets import load_dataset
 
 
 def download_mmlu_data(target_dir="data/mmlu", force=False):
     """Download MMLU dataset using HuggingFace datasets."""
-    logger = logging.getLogger("gemma_benchmark.utils.data_downloader")
+    logger = logging.getLogger("openevals.utils.data_downloader")
 
     if not force and os.path.exists(os.path.join(target_dir, ".downloaded")):
         logger.info(f"MMLU data already cached. Use force=True to redownload.")
@@ -34,7 +35,7 @@ def download_mmlu_data(target_dir="data/mmlu", force=False):
 
 def download_gsm8k_data(target_dir="data/gsm8k", force=False):
     """Download GSM8K dataset."""
-    logger = logging.getLogger("gemma_benchmark.utils.data_downloader")
+    logger = logging.getLogger("openevals.utils.data_downloader")
 
     if not force and os.path.exists(os.path.join(target_dir, ".downloaded")):
         logger.info(f"GSM8K data already cached.")
@@ -57,7 +58,7 @@ def download_gsm8k_data(target_dir="data/gsm8k", force=False):
 
 def download_humaneval_data(target_dir="data/humaneval", force=False):
     """Download HumanEval dataset."""
-    logger = logging.getLogger("gemma_benchmark.utils.data_downloader")
+    logger = logging.getLogger("openevals.utils.data_downloader")
 
     if not force and os.path.exists(os.path.join(target_dir, ".downloaded")):
         logger.info(f"HumanEval data already cached.")

@@ -25,15 +25,15 @@ jobs:
           pip install flake8 black isort
 
       - name: Check formatting with Black
-        run: black --check gemma_benchmark tests
+        run: black --check openevals tests
 
       - name: Check import order with isort
-        run: isort --check-only gemma_benchmark tests
+        run: isort --check-only openevals tests
 
       - name: Lint with flake8
         run: |
-          flake8 gemma_benchmark --count --select=E9,F63,F7,F82 --show-source --statistics
-          flake8 gemma_benchmark --count --exit-zero --max-line-length=127 --statistics
+          flake8 openevals --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 openevals --count --exit-zero --max-line-length=127 --statistics
 
   test-core:
     name: Core Tests
@@ -146,7 +146,7 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Generate coverage report
-        run: pytest tests/ --cov=gemma_benchmark --cov-report=xml --cov-report=html -m "not slow and not gpu"
+        run: pytest tests/ --cov=openevals --cov-report=xml --cov-report=html -m "not slow and not gpu"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

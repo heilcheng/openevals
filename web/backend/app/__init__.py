@@ -1,1 +1,1 @@
-"""Gemma Benchmark Web API Backend."""
+"""OpenEvals Web API Backend."""

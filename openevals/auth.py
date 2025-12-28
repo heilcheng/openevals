@@ -2,10 +2,10 @@
 Authentication manager for handling HuggingFace Hub access, especially for gated models like Gemma.
 """
 
-import os
 import logging
+import os
 from pathlib import Path
-from typing import Optional, List, Tuple, NamedTuple
+from typing import List, NamedTuple, Optional, Tuple
 
 # HuggingFace Hub client
 try:
@@ -29,7 +29,7 @@ class AuthManager:
     """Manages authentication and access checks for HuggingFace models."""
 
     def __init__(self, cache_dir: str = ".cache"):
-        self.logger = logging.getLogger("gemma_benchmark.auth")
+        self.logger = logging.getLogger("openevals.auth")
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
 

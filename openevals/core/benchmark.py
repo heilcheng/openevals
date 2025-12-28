@@ -1,21 +1,19 @@
 """
-Core orchestration logic for the Gemma Benchmarking Suite.
+Core orchestration logic for the OpenEvalsing Suite.
 """
 
 import logging
-import yaml
 import os
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-# Import the configuration validation tools
-from gemma_benchmark.utils.config_validation import (
-    validate_config_file,
-    ConfigurationError,
-)
+import yaml
 
 # Import the factory and manager to be used directly
-from gemma_benchmark.core.interfaces import BenchmarkFactory
-from gemma_benchmark.core.model_loader import get_model_manager
+from openevals.core.interfaces import BenchmarkFactory
+from openevals.core.model_loader import get_model_manager
+
+# Import the configuration validation tools
+from openevals.utils.config_validation import ConfigurationError, validate_config_file
 
 
 # Define a custom exception for evaluation errors
@@ -40,7 +38,7 @@ class GemmaBenchmark:
         Args:
             config_path: Path to the YAML configuration file.
         """
-        self.logger = logging.getLogger("gemma_benchmark.core")
+        self.logger = logging.getLogger("openevals.core")
         self.config_path = config_path
         self.config = self._load_config()
 

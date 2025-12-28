@@ -1,9 +1,10 @@
 """Tests for benchmark tasks."""
 
-import pytest
-from unittest.mock import Mock, patch
-import sys
 import platform
+import sys
+from unittest.mock import Mock, patch
+
+import pytest
 
 # Mock the datasets library if it's not available
 try:
@@ -11,11 +12,11 @@ try:
 except ImportError:
     sys.modules["datasets"] = Mock()
 
-from gemma_benchmark.tasks.mmlu import MMLUBenchmark
-from gemma_benchmark.tasks.efficiency import EfficiencyBenchmark
-from gemma_benchmark.tasks.gsm8k import GSM8KBenchmark
-from gemma_benchmark.tasks.humaneval import HumanEvalBenchmark
-from gemma_benchmark.core.model_loader import ModelWrapper
+from openevals.core.model_loader import ModelWrapper
+from openevals.tasks.efficiency import EfficiencyBenchmark
+from openevals.tasks.gsm8k import GSM8KBenchmark
+from openevals.tasks.humaneval import HumanEvalBenchmark
+from openevals.tasks.mmlu import MMLUBenchmark
 
 
 class TestMMLUBenchmark:

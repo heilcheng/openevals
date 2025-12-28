@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Basic usage example for the Gemma Benchmarking Suite.
+Basic usage example for the OpenEvalsing Suite.
 
 This script demonstrates how to:
 1. Set up authentication
@@ -17,9 +17,9 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from gemma_benchmark.auth import AuthManager
-from gemma_benchmark.core.benchmark import GemmaBenchmark
-from gemma_benchmark.visualization.charts import ChartGenerator
+from openevals.auth import AuthManager
+from openevals.core.benchmark import GemmaBenchmark
+from openevals.visualization.charts import ChartGenerator
 
 
 def setup_logging():
@@ -35,7 +35,7 @@ def main():
     setup_logging()
     logger = logging.getLogger("examples.basic_usage")
 
-    logger.info("Starting Gemma Benchmark Example")
+    logger.info("Starting OpenEvals Example")
 
     # 1. Authentication
     logger.info("Checking for HuggingFace authentication token...")

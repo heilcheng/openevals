@@ -1,5 +1,5 @@
 """
-Bridge between the web API and the gemma_benchmark core library.
+Bridge between the web API and the openevals core library.
 
 This adapter wraps the GemmaBenchmark class to provide:
 - Async execution with progress callbacks
@@ -15,7 +15,7 @@ import sys
 from typing import Any, Callable, Optional
 from concurrent.futures import ThreadPoolExecutor
 
-# Add parent directory to path to import gemma_benchmark
+# Add parent directory to path to import openevals
 sys.path.insert(
     0,
     os.path.dirname(
@@ -25,9 +25,9 @@ sys.path.insert(
     ),
 )
 
-from gemma_benchmark.core.benchmark import GemmaBenchmark  # noqa: E402
+from openevals.core.benchmark import GemmaBenchmark  # noqa: E402
 
-logger = logging.getLogger("gemma_benchmark.web.adapter")
+logger = logging.getLogger("openevals.web.adapter")
 
 
 # Available task types with descriptions
@@ -97,7 +97,7 @@ class BenchmarkAdapter:
     """
     Async adapter for running benchmarks with progress tracking.
 
-    This class bridges the synchronous gemma_benchmark library with
+    This class bridges the synchronous openevals library with
     the async FastAPI backend, providing real-time progress updates.
     """
 

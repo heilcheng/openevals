@@ -3,9 +3,10 @@ TruthfulQA benchmark implementation for evaluating truthfulness and factual accu
 """
 
 import logging
-from typing import Dict, List, Any, Optional
-from datasets import load_dataset
 import re
+from typing import Any, Dict, List, Optional
+
+from datasets import load_dataset
 
 from ..core.model_loader import ModelWrapper
 
@@ -25,7 +26,7 @@ class TruthfulqaBenchmark:
         Args:
             config: Configuration dictionary for the benchmark
         """
-        self.logger = logging.getLogger("gemma_benchmark.tasks.truthfulqa")
+        self.logger = logging.getLogger("openevals.tasks.truthfulqa")
         self.config = config
         self.task_type = config.get(
             "task_type", "generation"

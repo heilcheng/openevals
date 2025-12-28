@@ -2,9 +2,9 @@
 Core metrics and evaluation utilities for the benchmarking suite.
 """
 
-import re
 import math
-from typing import List, Union, Optional
+import re
+from typing import List, Optional, Union
 
 
 def extract_numerical_answer(text: str) -> float:

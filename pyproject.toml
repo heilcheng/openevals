@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "gemma-benchmark"
+name = "openevals"
 version = "1.0.0"
-description = "A benchmarking framework for Google's Gemma models"
+description = "An open-source evaluation framework for large language models"
 readme = "README.md"
 authors = [{ name = "Hailey Cheng" }]
 license = { text = "MIT License" }
@@ -37,6 +37,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
     "pre-commit>=4.0.0",
     "black>=24.10.0",
     "isort>=5.13.0",
@@ -48,13 +49,35 @@ dev = [
 ]
 
 [project.scripts]
-run-benchmark = "gemma_benchmark.scripts.run_benchmark:main"
-download-data = "gemma_benchmark.scripts.download_data:main"
+run-benchmark = "openevals.scripts.run_benchmark:main"
+download-data = "openevals.scripts.download_data:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["openevals*"]
 
-# FIX: Add this section to configure flake8 to agree with black
+[tool.black]
+line-length = 88
+target-version = ["py310", "py311", "py312"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line_length = 88
+known_first_party = ["openevals"]
+skip = ["venv", ".venv", "node_modules"]
+
 [tool.flake8]
 max-line-length = 88
-extend-ignore = "E203"
+extend-ignore = ["E203", "W503"]
+exclude = ["venv", ".venv", "node_modules", ".git"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+markers = [
+    "slow: marks tests as slow",
+    "gpu: marks tests as requiring GPU",
+    "integration: marks tests as integration tests",
+]

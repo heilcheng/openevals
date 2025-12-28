@@ -1,6 +1,6 @@
 # API Reference
 
-This document provides detailed API documentation for the Gemma Benchmarking Suite.
+This document provides detailed API documentation for the OpenEvalsing Suite.
 
 ## Core Classes
 
@@ -9,7 +9,7 @@ This document provides detailed API documentation for the Gemma Benchmarking Sui
 The main orchestration class for running benchmarks.
 
 ```python
-from gemma_benchmark.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import GemmaBenchmark
 
 benchmark = GemmaBenchmark(config_path="config.yaml")
 ```
@@ -80,7 +80,7 @@ Save results to disk.
 Wrapper class for language models providing a unified interface.
 
 ```python
-from gemma_benchmark.core.model_loader import ModelWrapper
+from openevals.core.model_loader import ModelWrapper
 
 wrapper = ModelWrapper("model-name", model, tokenizer)
 ```
@@ -116,7 +116,7 @@ Generate text based on a prompt.
 #### GemmaLoader
 
 ```python
-from gemma_benchmark.core.model_loader import GemmaLoader
+from openevals.core.model_loader import GemmaLoader
 
 loader = GemmaLoader()
 model_wrapper = loader.load_model(size="2b", variant="it")
@@ -142,7 +142,7 @@ model_wrapper = loader.load_model(size="2b", variant="it")
 Similar interface to GemmaLoader but for Mistral models.
 
 ```python
-from gemma_benchmark.core.model_loader import MistralLoader
+from openevals.core.model_loader import MistralLoader
 
 loader = MistralLoader()
 model_wrapper = loader.load_model(size="7b", variant="instruct")
@@ -161,11 +161,11 @@ class BenchmarkTask:
     def __init__(self, config: Dict[str, Any]):
         """Initialize with configuration."""
         pass
-    
+
     def load_data(self) -> Any:
         """Load benchmark dataset."""
         pass
-    
+
     def evaluate(self, model: ModelWrapper) -> Dict[str, Any]:
         """Evaluate model on this task."""
         pass
@@ -174,7 +174,7 @@ class BenchmarkTask:
 ### MMLUBenchmark
 
 ```python
-from gemma_benchmark.tasks.mmlu import MMLUBenchmark
+from openevals.tasks.mmlu import MMLUBenchmark
 
 config = {"subset": "mathematics", "shot_count": 5}
 benchmark = MMLUBenchmark(config)
@@ -192,7 +192,7 @@ results = benchmark.evaluate(model_wrapper)
 {
     "overall": {
         "correct": 650,
-        "total": 1000, 
+        "total": 1000,
         "accuracy": 0.65
     },
     "subjects": {
@@ -205,7 +205,7 @@ results = benchmark.evaluate(model_wrapper)
 ### GSM8KBenchmark
 
 ```python
-from gemma_benchmark.tasks.gsm8k import Gsm8kBenchmark
+from openevals.tasks.gsm8k import Gsm8kBenchmark
 
 config = {"shot_count": 5, "use_chain_of_thought": True}
 benchmark = Gsm8kBenchmark(config)
@@ -238,7 +238,7 @@ results = benchmark.evaluate(model_wrapper, num_samples=100)
 ### HumanEvalBenchmark
 
 ```python
-from gemma_benchmark.tasks.humaneval import HumanevalBenchmark
+from openevals.tasks.humaneval import HumanevalBenchmark
 
 config = {"timeout": 10, "temperature": 0.2}
 benchmark = HumanevalBenchmark(config)
@@ -272,7 +272,7 @@ results = benchmark.evaluate(model_wrapper, num_samples=50)
 ### EfficiencyBenchmark
 
 ```python
-from gemma_benchmark.tasks.efficiency import EfficiencyBenchmark
+from openevals.tasks.efficiency import EfficiencyBenchmark
 
 config = {
     "sample_prompts": ["Explain AI", "Write code"],
@@ -323,7 +323,7 @@ results = benchmark.evaluate(model_wrapper)
 ### Metrics
 
 ```python
-from gemma_benchmark.utils.metrics import (
+from openevals.utils.metrics import (
     calculate_accuracy,
     calculate_f1_score,
     calculate_pass_at_k,
@@ -352,7 +352,7 @@ Aggregate results from multiple runs with statistics.
 ### Data Downloading
 
 ```python
-from gemma_benchmark.utils.data_downloader import (
+from openevals.utils.data_downloader import (
     download_mmlu_data,
     download_gsm8k_data,
     download_humaneval_data
@@ -377,7 +377,7 @@ Download HumanEval dataset.
 ### ChartGenerator
 
 ```python
-from gemma_benchmark.visualization.charts import ChartGenerator
+from openevals.visualization.charts import ChartGenerator
 
 generator = ChartGenerator("output/charts")
 ```
@@ -424,12 +424,12 @@ tasks:
     type: mmlu
     subset: mathematics            # Subject subset
     shot_count: 5                  # Few-shot examples
-    
+
   gsm8k:
     type: gsm8k
     shot_count: 5
     use_chain_of_thought: true
-    
+
   efficiency:
     type: efficiency
     sample_prompts:
@@ -503,7 +503,7 @@ The framework implements graceful error handling:
 ### Basic Usage
 
 ```python
-from gemma_benchmark.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import GemmaBenchmark
 
 # Initialize and run
 benchmark = GemmaBenchmark("config.yaml")
@@ -518,13 +518,13 @@ benchmark.save_results("results.yaml")
 ### Custom Task Implementation
 
 ```python
-from gemma_benchmark.core.model_loader import ModelWrapper
+from openevals.core.model_loader import ModelWrapper
 from typing import Dict, Any
 
 class CustomBenchmark:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-    
+
     def evaluate(self, model: ModelWrapper) -> Dict[str, Any]:
         # Your evaluation logic here
         return {"overall": {"accuracy": 0.85}}
@@ -539,7 +539,7 @@ benchmark.load_tasks(["mmlu", "gsm8k"])
 results = benchmark.run_benchmarks()
 
 # Generate comparison charts
-from gemma_benchmark.visualization.charts import ChartGenerator
+from openevals.visualization.charts import ChartGenerator
 generator = ChartGenerator("charts")
 generator.create_performance_heatmap(results)
 ```

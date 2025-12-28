@@ -7,26 +7,27 @@ statistical significance testing, and error analysis.
 
 Dependencies:
     matplotlib>=3.4.0
-    seaborn>=0.11.0  
+    seaborn>=0.11.0
     pandas>=1.3.0
     scipy>=1.7.0
     numpy>=1.20.0
 """
 
-import os
-import logging
-import numpy as np
-from typing import Dict, List, Any, Optional, Tuple, Union
-from pathlib import Path
 import json
+import logging
+import os
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import matplotlib.patches as mpatches
 
 # Core plotting libraries
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from matplotlib.patches import Rectangle
-from matplotlib.gridspec import GridSpec
 import matplotlib.ticker as ticker
+import numpy as np
+from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Rectangle
 
 # Optional dependencies
 try:
@@ -133,7 +134,7 @@ class BenchmarkVisualizer:
             output_dir: Directory to save generated charts
             style: Visualization style ('publication', 'presentation', 'web')
         """
-        self.logger = logging.getLogger("gemma_benchmark.visualization")
+        self.logger = logging.getLogger("openevals.visualization")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1333,7 +1334,7 @@ class ChartGenerator:
         """Initialize chart generator."""
         self.visualizer = BenchmarkVisualizer(output_dir, style="web")
         self.output_dir = output_dir
-        self.logger = logging.getLogger("gemma_benchmark.visualization.charts")
+        self.logger = logging.getLogger("openevals.visualization.charts")
 
     def create_performance_heatmap(self, results: Dict[str, Dict[str, Any]]) -> str:
         """Create performance heatmap (backward compatible)."""
@@ -1576,12 +1577,12 @@ def create_comprehensive_report(
         )
         generated_files["summary"] = [visualizer.export_results_summary(results)]
 
-        logging.getLogger("gemma_benchmark.visualization").info(
+        logging.getLogger("openevals.visualization").info(
             f"Generated comprehensive report in {output_dir}"
         )
 
     except Exception as e:
-        logging.getLogger("gemma_benchmark.visualization").error(
+        logging.getLogger("openevals.visualization").error(
             f"Error generating report: {e}"
         )
         raise

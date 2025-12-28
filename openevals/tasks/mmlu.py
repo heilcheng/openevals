@@ -8,7 +8,7 @@ from typing import Any
 
 from datasets import Dataset, load_dataset
 
-from gemma_benchmark.core.interfaces import AbstractBenchmark, ModelInterface
+from openevals.core.interfaces import AbstractBenchmark, ModelInterface
 
 # Prompt templates
 FEW_SHOT_PROMPT = """

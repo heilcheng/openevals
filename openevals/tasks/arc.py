@@ -4,7 +4,7 @@ ARC (AI2 Reasoning Challenge) benchmark implementation for science reasoning eva
 
 import logging
 import re
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 from datasets import load_dataset
 
@@ -25,7 +25,7 @@ class ArcBenchmark:
         Args:
             config: Configuration dictionary for the benchmark
         """
-        self.logger = logging.getLogger("gemma_benchmark.tasks.arc")
+        self.logger = logging.getLogger("openevals.tasks.arc")
         self.config = config
         self.subset = config.get(
             "subset", "ARC-Challenge"

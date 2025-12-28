@@ -1,5 +1,5 @@
 """
-Model loading and management for the Gemma Benchmarking Suite.
+Model loading and management for the OpenEvalsing Suite.
 
 Supports modern features including:
 - Flash Attention 2 for faster inference
@@ -53,7 +53,7 @@ class BaseModelLoader:
         self.model_name = model_name
         self.config = config
         self.logger = logging.getLogger(
-            f"gemma_benchmark.model_loader.{self.__class__.__name__}"
+            f"openevals.model_loader.{self.__class__.__name__}"
         )
         self._use_flash_attention = False
 
@@ -171,7 +171,7 @@ class ModelManager:
     """Manages the loading and retrieval of models with modern optimizations."""
 
     def __init__(self) -> None:
-        self.logger = logging.getLogger("gemma_benchmark.model_manager")
+        self.logger = logging.getLogger("openevals.model_manager")
         self._loaders: dict[str, type[BaseModelLoader]] = {
             "gemma": GemmaLoader,
             "mistral": MistralLoader,

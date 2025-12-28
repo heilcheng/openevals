@@ -1,5 +1,5 @@
 """
-Comprehensive configuration validation system for the Gemma Benchmarking Suite.
+Comprehensive configuration validation system for the OpenEvalsing Suite.
 
 Uses Pydantic V2 with modern Python 3.10+ type hints.
 """
@@ -136,7 +136,7 @@ class FlexibleConfigValidator:
     """Validator for benchmark configuration files."""
 
     def __init__(self) -> None:
-        self.logger = logging.getLogger("gemma_benchmark.config_validator")
+        self.logger = logging.getLogger("openevals.config_validator")
         if not PYDANTIC_AVAILABLE:
             raise ImportError("Pydantic is required for configuration validation.")
 

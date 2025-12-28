@@ -1,4 +1,4 @@
-# Example configuration for the Gemma Benchmark Suite
+# Example configuration for the OpenEvals Suite
 #
 # This file defines which models to test, which benchmarks to run,
 # and how to configure the evaluation and output.

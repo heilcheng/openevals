@@ -62,13 +62,13 @@ USER gemma
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import gemma_benchmark; print('OK')" || exit 1
+    CMD python -c "import openevals; print('OK')" || exit 1
 
 # Default command
-CMD ["python", "-m", "gemma_benchmark.scripts.run_benchmark", "--help"]
+CMD ["python", "-m", "openevals.scripts.run_benchmark", "--help"]
 
 # Labels for metadata
 LABEL maintainer="Hailey Cheng <hailey.cheng@example.com>" \
-      description="Gemma Benchmarking Suite - Production-ready evaluation framework" \
+      description="OpenEvalsing Suite - Production-ready evaluation framework" \
       version="1.0.0" \
       org.opencontainers.image.source="https://github.com/heilcheng/gemma-benchmark"

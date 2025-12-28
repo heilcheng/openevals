@@ -1,1 +1,1 @@
-"""Test suite for gemma_benchmark package."""
+"""Test suite for openevals package."""
