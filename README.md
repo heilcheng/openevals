@@ -1,6 +1,11 @@
 # OpenEvals
 
+[![Google Summer of Code](https://img.shields.io/badge/Google%20Summer%20of%20Code-2025-blue?logo=google&logoColor=white)](https://summerofcode.withgoogle.com/)
+[![Organization: Google DeepMind](https://img.shields.io/badge/Organization-Google%20DeepMind-4285F4?logo=google&logoColor=white)](https://deepmind.google/)
+
 An open-source evaluation framework for large language models, providing systematic benchmarking across standardized academic tasks.
+
+**[View Full Documentation](https://heilcheng.github.io/openevals/)**
 
 ## Overview
 
@@ -136,45 +141,56 @@ hardware:
 ## Python API
 
 ```python
-from openevals.core.benchmark import Benchmark
+from openevals.core.benchmark import GemmaBenchmark
 
-benchmark = Benchmark("config.yaml")
+benchmark = GemmaBenchmark("config.yaml")
 benchmark.load_models(["llama3-8b", "qwen2.5-7b"])
 benchmark.load_tasks(["mmlu", "gsm8k"])
 
-results = benchmark.run()
+results = benchmark.run_benchmarks()
 benchmark.save_results("results.yaml")
 ```
 
 ## Web Platform
 
-An interactive web interface is available for browser-based evaluation:
+An interactive web interface is available for browser-based evaluation.
+
+Features:
+- Real-time benchmark progress via WebSocket
+- Model configuration management
+- Interactive leaderboard and visualizations
+- Support for all benchmark tasks
+
+Quick Start:
 
 ```bash
-# Backend
+# Backend (FastAPI)
 cd web/backend
 pip install -r requirements.txt
 uvicorn app.main:app --port 8000
 
-# Frontend
+# Frontend (Next.js 15)
 cd web/frontend
 npm install && npm run dev
 ```
 
-Access at http://localhost:3000
+- Web UI: http://localhost:3000
+- API Docs: http://localhost:8000/api/docs
+
+See [web/README.md](web/README.md) for detailed API documentation.
 
 ## Output Structure
 
 ```
 results/
-├── 20250128_143022/
-│   ├── results.yaml
-│   ├── summary.json
-│   ├── visualizations/
-│   │   ├── performance_overview.png
-│   │   ├── model_comparison.png
-│   │   └── task_breakdown.png
-│   └── report.md
++-- 20250128_143022/
+    +-- results.yaml
+    +-- summary.json
+    +-- visualizations/
+    |   +-- performance_overview.png
+    |   +-- model_comparison.png
+    |   +-- task_breakdown.png
+    +-- report.md
 ```
 
 ## Testing
@@ -188,16 +204,16 @@ pytest --cov=openevals tests/
 
 ```
 openevals/
-├── openevals/
-│   ├── core/           # Orchestration and model loading
-│   ├── tasks/          # Benchmark implementations
-│   ├── utils/          # Metrics, validation, utilities
-│   ├── visualization/  # Charts and reporting
-│   └── scripts/        # CLI entry points
-├── web/                # Web platform (FastAPI + Next.js)
-├── configs/            # Configuration examples
-├── tests/              # Test suite
-└── examples/           # Usage examples
++-- openevals/
+|   +-- core/           # Orchestration and model loading
+|   +-- tasks/          # Benchmark implementations
+|   +-- utils/          # Metrics, validation, utilities
+|   +-- visualization/  # Charts and reporting
+|   +-- scripts/        # CLI entry points
++-- web/                # Web platform (FastAPI + Next.js)
++-- configs/            # Configuration examples
++-- tests/              # Test suite
++-- examples/           # Usage examples
 ```
 
 ## Citation
@@ -211,12 +227,30 @@ openevals/
 }
 ```
 
+## Documentation
+
+Full documentation is available at: **https://heilcheng.github.io/openevals/**
+
+- [Getting Started Guide](https://heilcheng.github.io/openevals/installation.html)
+- [Quick Start](https://heilcheng.github.io/openevals/quickstart.html)
+- [API Reference](https://heilcheng.github.io/openevals/api/index.html)
+
+## Contributing
+
+Contributions are welcome. Please see our [Contributing Guide](CONTRIBUTING.md) for:
+
+- Development setup
+- Code style guidelines
+- Pull request process
+- Issue reporting
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
 
 ## Acknowledgments
 
+- Google Summer of Code 2025 - This project is developed as part of Google Summer of Code with Google DeepMind
 - Model developers: Google, Meta, Mistral AI, Alibaba, DeepSeek, Microsoft, Allen AI
 - HuggingFace for model hosting and datasets
 - Contributors to benchmark datasets and evaluation methodologies

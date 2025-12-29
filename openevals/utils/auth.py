@@ -29,7 +29,7 @@ class AuthManager:
     """Manages authentication and access checks for HuggingFace models."""
 
     def __init__(self, cache_dir: str = ".cache"):
-        self.logger = logging.getLogger("openevals.auth")
+        self.logger = logging.getLogger("openevals.utils.auth")
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(exist_ok=True)
 

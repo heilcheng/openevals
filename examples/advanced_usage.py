@@ -22,7 +22,7 @@ from typing import Dict, Any
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from openevals.auth import AuthManager
+from openevals.utils.auth import AuthManager
 from openevals.core.benchmark import GemmaBenchmark
 from openevals.visualization.charts import ChartGenerator
 from openevals.utils.metrics import (
