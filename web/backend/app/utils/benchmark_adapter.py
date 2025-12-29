@@ -1,7 +1,7 @@
 """
 Bridge between the web API and the openevals core library.
 
-This adapter wraps the GemmaBenchmark class to provide:
+This adapter wraps the Benchmark class to provide:
 - Async execution with progress callbacks
 - WebSocket-compatible progress updates
 - Integration with the database models
@@ -25,7 +25,7 @@ sys.path.insert(
     ),
 )
 
-from openevals.core.benchmark import GemmaBenchmark  # noqa: E402
+from openevals.core.benchmark import Benchmark  # noqa: E402
 
 logger = logging.getLogger("openevals.web.adapter")
 
@@ -190,7 +190,7 @@ class BenchmarkAdapter:
         def run_sync():
             results = {}
             try:
-                benchmark = GemmaBenchmark(config_path)
+                benchmark = Benchmark(config_path)
 
                 # Get total work items
                 model_names = list(benchmark.config.get("models", {}).keys())

@@ -7,7 +7,7 @@ name = "openevals"
 version = "1.0.0"
 description = "An open-source evaluation framework for large language models"
 readme = "README.md"
-authors = [{ name = "Hailey Cheng" }]
+authors = [{ name = "Cheng Hei Lam" }]
 license = { text = "MIT License" }
 classifiers = [
     "Programming Language :: Python :: 3",

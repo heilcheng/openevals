@@ -23,7 +23,7 @@ from typing import Dict, Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from openevals.utils.auth import AuthManager
-from openevals.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import Benchmark
 from openevals.visualization.charts import ChartGenerator
 from openevals.utils.metrics import (
     aggregate_results,
@@ -108,7 +108,7 @@ def run_multiple_evaluations(config_path: str, num_runs: int = 2) -> Dict[str, A
     for run_idx in range(num_runs):
         logger.info(f"Starting evaluation run {run_idx + 1}/{num_runs}")
 
-        benchmark = GemmaBenchmark(config_path)
+        benchmark = Benchmark(config_path)
         benchmark.load_models()
         benchmark.load_tasks()
         results = benchmark.run_benchmarks()

@@ -50,10 +50,10 @@ Using the Python API
 
 .. code-block:: python
 
-   from openevals.core.benchmark import GemmaBenchmark
+   from openevals.core.benchmark import Benchmark
 
    # Initialize
-   benchmark = GemmaBenchmark("config.yaml")
+   benchmark = Benchmark("config.yaml")
    benchmark.load_models(["gemma-2b"])
    benchmark.load_tasks(["mmlu"])
 

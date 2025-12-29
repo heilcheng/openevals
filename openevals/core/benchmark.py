@@ -23,7 +23,7 @@ class EvaluationError(Exception):
     pass
 
 
-class GemmaBenchmark:
+class Benchmark:
     """
     Main class for orchestrating benchmark runs.
 

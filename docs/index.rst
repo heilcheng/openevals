@@ -118,7 +118,7 @@ Citation
 .. code-block:: bibtex
 
    @software{openevals,
-     author = {Hailey Cheng},
+     author = {Cheng Hei Lam},
      title = {OpenEvals: An Open-Source Evaluation Framework for Large Language Models},
      year = {2025},
      url = {https://github.com/heilcheng/openevals}

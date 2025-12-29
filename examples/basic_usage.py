@@ -18,7 +18,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from openevals.utils.auth import AuthManager
-from openevals.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import Benchmark
 from openevals.visualization.charts import ChartGenerator
 
 
@@ -56,7 +56,7 @@ def main():
     # 3. Initialize benchmark
     logger.info("Initializing benchmark...")
     try:
-        benchmark = GemmaBenchmark(config_path)
+        benchmark = Benchmark(config_path)
 
         # 4. Load models and tasks
         logger.info("Loading models...")

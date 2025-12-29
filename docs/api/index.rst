@@ -6,22 +6,22 @@ This section provides detailed documentation for all OpenEvals classes and metho
 Core Modules
 ------------
 
-GemmaBenchmark
-^^^^^^^^^^^^^^
+Benchmark
+^^^^^^^^^
 
 Main orchestration class for running benchmarks.
 
 .. code-block:: python
 
-   from openevals.core.benchmark import GemmaBenchmark
+   from openevals.core.benchmark import Benchmark
 
-   benchmark = GemmaBenchmark("config.yaml")
+   benchmark = Benchmark("config.yaml")
 
 **Constructor**
 
 .. code-block:: python
 
-   GemmaBenchmark(config_path: str)
+   Benchmark(config_path: str)
 
 .. list-table::
    :header-rows: 1
@@ -53,8 +53,8 @@ Unified interface for language models.
 Main Classes
 ------------
 
-GemmaBenchmark Methods
-^^^^^^^^^^^^^^^^^^^^^^
+Benchmark Methods
+^^^^^^^^^^^^^^^^^
 
 load_models
 """""""""""

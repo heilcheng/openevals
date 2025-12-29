@@ -15,7 +15,7 @@ from pathlib import Path
 # Add parent directory to path to make imports work
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from openevals.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import Benchmark
 
 # Import for task registration
 from openevals.core.interfaces import AbstractBenchmark, BenchmarkFactory
@@ -287,7 +287,7 @@ def main() -> None:
     # Initialize benchmark
     try:
         logger.info(f"Loading configuration from: {args.config}")
-        benchmark = GemmaBenchmark(args.config)
+        benchmark = Benchmark(args.config)
 
         # Load models
         if args.models:

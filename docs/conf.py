@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "OpenEvals"
-copyright = "2025, Hailey Cheng"
-author = "Hailey Cheng"
+copyright = "2025, Cheng Hei Lam"
+author = "Cheng Hei Lam"
 release = "1.0.0"
 
 # -- General configuration ---------------------------------------------------

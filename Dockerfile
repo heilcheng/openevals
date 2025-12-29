@@ -68,7 +68,7 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 CMD ["python", "-m", "openevals.scripts.run_benchmark", "--help"]
 
 # Labels for metadata
-LABEL maintainer="Hailey Cheng <hailey.cheng@example.com>" \
+LABEL maintainer="Cheng Hei Lam <cheng.hei.lam@example.com>" \
       description="OpenEvalsing Suite - Production-ready evaluation framework" \
       version="1.0.0" \
       org.opencontainers.image.source="https://github.com/heilcheng/gemma-benchmark"

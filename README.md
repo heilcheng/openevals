@@ -141,9 +141,9 @@ hardware:
 ## Python API
 
 ```python
-from openevals.core.benchmark import GemmaBenchmark
+from openevals.core.benchmark import Benchmark
 
-benchmark = GemmaBenchmark("config.yaml")
+benchmark = Benchmark("config.yaml")
 benchmark.load_models(["llama3-8b", "qwen2.5-7b"])
 benchmark.load_tasks(["mmlu", "gsm8k"])
 
@@ -220,7 +220,7 @@ openevals/
 
 ```bibtex
 @software{openevals,
-  author = {Hailey Cheng},
+  author = {Cheng Hei Lam},
   title = {OpenEvals: An Open-Source Evaluation Framework for Large Language Models},
   year = {2025},
   url = {https://github.com/heilcheng/openevals}

@@ -7,7 +7,7 @@ from unittest.mock import ANY, MagicMock, patch
 import pytest
 
 # Core components to test
-from openevals.core.benchmark import EvaluationError, GemmaBenchmark
+from openevals.core.benchmark import Benchmark, EvaluationError
 from openevals.utils.config_validation import ConfigurationError
 
 # Sample valid and invalid configurations
@@ -41,8 +41,8 @@ def valid_config_file(tmp_path):
 
 
 def test_benchmark_initialization_success(valid_config_file):
-    """Test successful initialization of GemmaBenchmark with a valid config."""
-    benchmark = GemmaBenchmark(valid_config_file)
+    """Test successful initialization of Benchmark with a valid config."""
+    benchmark = Benchmark(valid_config_file)
     assert benchmark.config is not None
     assert "models" in benchmark.config
     assert "tasks" in benchmark.config
@@ -51,7 +51,7 @@ def test_benchmark_initialization_success(valid_config_file):
 def test_benchmark_initialization_file_not_found():
     """Test that initialization fails if the config file does not exist."""
     with pytest.raises(ConfigurationError, match="Configuration file not found"):
-        GemmaBenchmark("non_existent_file.yaml")
+        Benchmark("non_existent_file.yaml")
 
 
 def test_load_config_invalid_yaml(tmp_path):
@@ -61,7 +61,7 @@ def test_load_config_invalid_yaml(tmp_path):
         f.write("models: { gemma-2b: { type: gemma")  # Malformed YAML
 
     with pytest.raises(ConfigurationError):
-        GemmaBenchmark(str(invalid_yaml_file))
+        Benchmark(str(invalid_yaml_file))
 
 
 def test_load_config_validation_error(tmp_path):
@@ -74,7 +74,7 @@ def test_load_config_validation_error(tmp_path):
         yaml.dump(invalid_config, f)
 
     with pytest.raises(ConfigurationError):
-        GemmaBenchmark(str(config_file))
+        Benchmark(str(config_file))
 
 
 @patch("openevals.core.benchmark.get_model_manager")
@@ -86,7 +86,7 @@ def test_load_models_success(mock_get_manager, valid_config_file):
     mock_manager.load_model.return_value = mock_model
     mock_get_manager.return_value = mock_manager
 
-    benchmark = GemmaBenchmark(valid_config_file)
+    benchmark = Benchmark(valid_config_file)
     benchmark.load_models()  # Load all models from config
 
     # Check that load_model was called with the model name and a config dict
@@ -105,7 +105,7 @@ def test_load_tasks_success(mock_factory, valid_config_file):
     mock_task = MagicMock()
     mock_factory.create_benchmark.return_value = mock_task
 
-    benchmark = GemmaBenchmark(valid_config_file)
+    benchmark = Benchmark(valid_config_file)
     benchmark.load_tasks()  # Load all tasks from config
 
     mock_factory.create_benchmark.assert_called_once_with(
@@ -117,7 +117,7 @@ def test_load_tasks_success(mock_factory, valid_config_file):
 
 def test_run_benchmarks_no_models_or_tasks(valid_config_file):
     """Test that run_benchmarks raises an error if no models or tasks are loaded."""
-    benchmark = GemmaBenchmark(valid_config_file)
+    benchmark = Benchmark(valid_config_file)
 
     with pytest.raises(EvaluationError, match="No models or tasks loaded"):
         benchmark.run_benchmarks()
@@ -139,7 +139,7 @@ def test_run_benchmarks_evaluation_flow(
     mock_task.evaluate.return_value = {"accuracy": 95.0}
     mock_factory.create_benchmark.return_value = mock_task
 
-    benchmark = GemmaBenchmark(valid_config_file)
+    benchmark = Benchmark(valid_config_file)
     benchmark.load_models()
     benchmark.load_tasks()
 
