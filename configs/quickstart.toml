@@ -1,0 +1,25 @@
+# Small smoke test against one local OpenAI-compatible server (vLLM default port).
+# Start a server first, for example:
+#   vllm serve Qwen/Qwen3-8B --port 8000
+
+[run]
+output = "results/quickstart"
+data_dir = "data"
+concurrency = 8
+
+[endpoint]
+base_url = "http://localhost:8000/v1"
+
+[[models]]
+model = "qwen3-8b"      # registry id; the served name defaults to the registry hf_repo
+thinking = false        # sends chat_template_kwargs.enable_thinking = false
+
+[[tasks]]
+type = "mmlu"
+shots = 5
+limit = 200
+
+[[tasks]]
+type = "gsm8k"
+shots = 8
+limit = 200

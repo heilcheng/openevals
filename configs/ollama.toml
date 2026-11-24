@@ -1,0 +1,28 @@
+# Ollama exposes an OpenAI-compatible API at /v1. Ollama tags are used as served names.
+
+[run]
+output = "results/ollama"
+concurrency = 2
+
+[endpoint]
+base_url = "http://localhost:11434/v1"
+
+[[models]]
+model = "qwen3-8b"
+served_name = "qwen3:8b"
+thinking = false
+
+[[models]]
+model = "gpt-oss-20b"
+served_name = "gpt-oss:20b"
+
+[[tasks]]
+type = "gsm8k"
+shots = 0
+limit = 100
+max_tokens = 2048
+
+[[tasks]]
+type = "mmlu"
+shots = 0
+limit = 200

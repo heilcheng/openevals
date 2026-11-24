@@ -1,0 +1,62 @@
+# Current evaluation suite for instruction-tuned and reasoning models.
+# GPQA needs HF_TOKEN with access to Idavidrein/gpqa.
+
+[run]
+output = "results/full"
+data_dir = "data"
+concurrency = 16
+retries = 5
+timeout_secs = 1800
+runs = 1
+seed = 42
+
+[endpoint]
+base_url = "http://localhost:8000/v1"
+# api_key_env = "OPENAI_API_KEY"
+
+[[models]]
+model = "qwen3-8b"
+thinking = true
+use_recommended_sampling = true   # use vendor sampling from models.toml instead of greedy
+
+[[models]]
+model = "gpt-oss-20b"
+reasoning_effort = "medium"
+use_recommended_sampling = true
+
+[[tasks]]
+type = "mmlu_pro"
+shots = 0
+max_tokens = 8192
+
+[[tasks]]
+type = "gpqa"
+max_tokens = 16384
+
+[[tasks]]
+type = "math500"
+max_tokens = 16384
+
+[[tasks]]
+type = "gsm8k"
+shots = 0
+max_tokens = 4096
+
+[[tasks]]
+type = "humaneval"
+samples = 1
+max_tokens = 8192
+
+[[tasks]]
+type = "arc"
+subset = "ARC-Challenge"
+max_tokens = 4096
+
+[[tasks]]
+type = "truthfulqa"
+task_type = "mc1"
+max_tokens = 4096
+
+[[tasks]]
+type = "efficiency"
+output_lengths = [128, 512]

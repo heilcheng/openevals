@@ -1,55 +1,42 @@
 # Contributing to OpenEvals
 
-Thank you for your interest in contributing to OpenEvals!
-
-## Quick Start
+## Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/openevals.git
+git clone https://github.com/heilcheng/openevals.git
 cd openevals
-python -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-pip install pre-commit && pre-commit install
+cargo build
 ```
 
-## Code Style
+## Checks
 
-- **Python**: PEP 8, Black formatting, 88 char line length
-- **TypeScript**: ESLint + Prettier
+All three must pass before a pull request is merged:
 
 ```bash
-black . && isort .
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
 ```
 
-## Testing
+## Layout
 
-```bash
-pytest tests/
-pytest --cov=openevals tests/
-```
+| Crate | Purpose |
+|---|---|
+| `openevals-core` | Types, run configuration, model registry, metrics, cache, results and reports |
+| `openevals-backend` | OpenAI-compatible HTTP client with retries and streaming timing |
+| `openevals-tasks` | Benchmarks, scorers, dataset access and the runner |
+| `openevals-cli` | The `openevals` binary and the mock-server integration test |
 
-## Pull Request Process
+## Adding a benchmark
 
-1. Fork and create branch from `main`
-2. Make changes with tests
-3. Ensure all tests pass
-4. Submit PR with clear description
+1. Implement the `Task` trait in `crates/openevals-tasks`: `load` builds prompts and references, `score` is a pure function of the reference and the model reply.
+2. Register the type in `build_task` and in `TASK_TYPES` (`openevals-core/src/config.rs`), and add its dataset to `dataset_specs`.
+3. Add unit tests for the scorer, including malformed model output.
 
-## Commit Messages
+## Adding a model
 
-```
-<type>: <description>
-```
+Edit `models.toml`. Every `hf_repo` must exist on the Hugging Face Hub (`curl -s -o /dev/null -w "%{http_code}" https://huggingface.co/api/models/<repo>` returns 200). Record the source in `docs/MODELS.md`. The registry test checks that IDs are unique and fields are sane.
 
-Types: `Add`, `Fix`, `Docs`, `Refactor`, `Test`, `Chore`
+## Commit messages
 
-## Adding New Features
-
-- **New benchmarks**: Add to `openevals/tasks/`, register in `__init__.py`
-- **New models**: Add loader to `openevals/core/model_loader.py`
-
-See [full contributing guide](https://heilcheng.github.io/openevals/contributing/) for details.
-
-## License
-
-MIT License - contributions licensed under the same.
+Use the imperative mood and a short subject line, for example `Add MMLU-Pro scorer`.
