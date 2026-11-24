@@ -1,0 +1,1297 @@
+# openevals model registry
+#
+# Snapshot date: 2026-11-24. See docs/MODELS.md for sources, method and open questions.
+#
+# Conventions
+# - hf_repo: every repo ID was checked against https://huggingface.co/api/models/<id> (HTTP 200).
+# - params_b / active_params_b: billions, as stated on the model card when available,
+#   otherwise the safetensors total reported by the Hugging Face API (may include
+#   vision encoders, MTP heads or drafter weights; noted where relevant).
+# - context_length: tokens, as stated on the model card (native window, not YaRN-extended)
+#   or config.json max_position_embeddings when the card is silent.
+# - reasoning: "none" (no thinking mode), "hybrid" (thinking can be switched on and off),
+#   "always" (always reasons; effort may be adjustable but cannot be disabled).
+# - [model.sampling]: vendor-recommended settings for the default / non-thinking mode.
+#   For reasoning = "always" models it is the only sampling table.
+# - [model.sampling_thinking]: present only when the vendor gives separate thinking-mode settings.
+#   For hybrid models whose card gives one setting for both modes, only [model.sampling] is used.
+# - Keys the vendor does not state are omitted. max_tokens is a recommended generation budget.
+
+# ---------------------------------------------------------------- Meta (Muse, Llama)
+
+[[model]]
+id = "muse-spark-open"
+family = "Meta Muse"
+name = "Muse Spark Open 816B-A42B"
+hf_repo = "meta-models/Muse-Spark-Open-816B-A42B"
+params_b = 816
+active_params_b = 42
+context_length = 1048576
+license = "Muse-Model-License"
+gated = true
+reasoning = "always"
+release = "2026-10"
+notes = "Multimodal MoE. reasoning_effort low|medium|high|xhigh (default xhigh) via request param or chat_template_kwargs. Gated (manual approval)."
+[model.sampling]
+temperature = 1.0
+top_p = 1.0
+
+[[model]]
+id = "muse-glimmer-30b"
+family = "Meta Muse"
+name = "Muse Glimmer 30B"
+hf_repo = "meta-models/Muse-Glimmer-30B"
+params_b = 29.6
+active_params_b = 29.6
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2026-08"
+notes = "Dense, distilled from Muse Spark, includes perception encoder. Set effort with system prompt line 'Reasoning strength: <low|medium|high|xhigh>'."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "llama-3.1-8b-instruct"
+family = "Meta Llama"
+name = "Llama 3.1 8B Instruct"
+hf_repo = "meta-llama/Llama-3.1-8B-Instruct"
+params_b = 8.03
+active_params_b = 8.03
+context_length = 131072
+license = "Llama-3.1-Community"
+gated = true
+reasoning = "none"
+release = "2024-07"
+notes = "Prior-generation baseline. Llama 3 header-token template, system role supported. Gated (manual approval); sampling not recorded because generation_config.json is behind the gate."
+
+# ---------------------------------------------------------------- Qwen (Alibaba)
+
+[[model]]
+id = "qwen3.8-2.4t-a95b"
+family = "Qwen"
+name = "Qwen3.8 2.4T-A95B"
+hf_repo = "Qwen/Qwen3.8-2.4T-A95B"
+params_b = 2446
+active_params_b = 95
+context_length = 262144
+license = "Qwen3.8-Max-License"
+gated = false
+reasoning = "always"
+release = "2026-08"
+notes = "Text-only open weights of Qwen3.8-Max. Thinking cannot be disabled. reasoning_effort xhigh|medium|low (default xhigh); preserve_thinking on by default."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+max_tokens = 262144
+
+[[model]]
+id = "qwen3.8-flash-next"
+family = "Qwen"
+name = "Qwen3.8 Flash Next (125B-A6B)"
+hf_repo = "Qwen/Qwen3.8-Flash-Next"
+params_b = 125
+active_params_b = 6
+context_length = 262144
+license = "Qwen-Community-1.0"
+gated = true
+reasoning = "hybrid"
+release = "2026-08"
+notes = "125B MoE with 6B active plus 51B n-gram embedding and 4B MTP (safetensors 180B). Thinking on by default; enable_thinking=false for instruct mode. Gated (auto approval). Non-thinking presence_penalty 1.5."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.8-27b"
+family = "Qwen"
+name = "Qwen3.8 27B"
+hf_repo = "Qwen/Qwen3.8-27B"
+params_b = 27.8
+active_params_b = 27.8
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "Dense VLM. Thinking on by default; chat_template_kwargs enable_thinking=false for instruct mode; reasoning_effort xhigh|medium|low; preserve_thinking on by default. Non-thinking presence_penalty 1.5."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.6-35b-a3b"
+family = "Qwen"
+name = "Qwen3.6 35B-A3B"
+hf_repo = "Qwen/Qwen3.6-35B-A3B"
+params_b = 35
+active_params_b = 3
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-04"
+notes = "MoE VLM. Thinking on by default; enable_thinking=false for instruct mode. preserve_thinking off by default. presence_penalty 1.5 for general thinking and instruct; coding thinking uses temp 0.6, presence 0."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.5-397b-a17b"
+family = "Qwen"
+name = "Qwen3.5 397B-A17B"
+hf_repo = "Qwen/Qwen3.5-397B-A17B"
+params_b = 397
+active_params_b = 17
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-02"
+notes = "MoE VLM. Thinking on by default; enable_thinking=false for instruct mode. Card recommends at least 128K context to preserve thinking quality."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.5-122b-a10b"
+family = "Qwen"
+name = "Qwen3.5 122B-A10B"
+hf_repo = "Qwen/Qwen3.5-122B-A10B"
+params_b = 122
+active_params_b = 10
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-02"
+notes = "MoE VLM. Same template and toggles as Qwen3.5-397B-A17B."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.5-9b"
+family = "Qwen"
+name = "Qwen3.5 9B"
+hf_repo = "Qwen/Qwen3.5-9B"
+params_b = 9
+active_params_b = 9
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-02"
+notes = "Dense VLM (safetensors 9.65B incl. vision). Thinking on by default; enable_thinking=false for instruct mode."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.5-4b"
+family = "Qwen"
+name = "Qwen3.5 4B"
+hf_repo = "Qwen/Qwen3.5-4B"
+params_b = 4
+active_params_b = 4
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-02"
+notes = "Dense VLM. Thinking on by default; enable_thinking=false for instruct mode."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3.5-2b"
+family = "Qwen"
+name = "Qwen3.5 2B"
+hf_repo = "Qwen/Qwen3.5-2B"
+params_b = 2
+active_params_b = 2
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-02"
+notes = "Dense VLM. Unlike larger Qwen3.5 sizes, NON-thinking by default; pass enable_thinking=true to think."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+[[model]]
+id = "qwen3-coder-next"
+family = "Qwen"
+name = "Qwen3 Coder Next (80B-A3B)"
+hf_repo = "Qwen/Qwen3-Coder-Next"
+params_b = 80
+active_params_b = 3
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2026-01"
+notes = "Coding agent model, non-thinking only (no <think> blocks; enable_thinking not needed). Sampling from generation_config.json."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 40
+
+[[model]]
+id = "qwen3-8b"
+family = "Qwen"
+name = "Qwen3 8B"
+hf_repo = "Qwen/Qwen3-8B"
+params_b = 8.2
+active_params_b = 8.2
+context_length = 32768
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2025-04"
+notes = "Prior generation, widely used baseline. enable_thinking or /think and /no_think soft switches. 32K native, 131K with YaRN."
+[model.sampling]
+temperature = 0.7
+top_p = 0.8
+top_k = 20
+min_p = 0.0
+[model.sampling_thinking]
+temperature = 0.6
+top_p = 0.95
+top_k = 20
+min_p = 0.0
+
+# ---------------------------------------------------------------- Gemma (Google)
+
+[[model]]
+id = "gemma-4-31b-it"
+family = "Gemma"
+name = "Gemma 4 31B IT"
+hf_repo = "google/gemma-4-31B-it"
+params_b = 30.7
+active_params_b = 30.7
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "Dense VLM. Native system role. Thinking enabled by <|think|> at start of system prompt (enable_thinking=True in template). Empty thought block emitted when off. Drop past thoughts from history."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "gemma-4-26b-a4b-it"
+family = "Gemma"
+name = "Gemma 4 26B-A4B IT"
+hf_repo = "google/gemma-4-26B-A4B-it"
+params_b = 25.2
+active_params_b = 3.8
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "MoE VLM. Same template and thinking toggle as gemma-4-31b-it."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "gemma-4-12b-it"
+family = "Gemma"
+name = "Gemma 4 12B IT (Unified)"
+hf_repo = "google/gemma-4-12B-it"
+params_b = 11.95
+active_params_b = 11.95
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-05"
+notes = "Dense, text+image+audio+video input. Same thinking toggle as other Gemma 4 sizes."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "gemma-4-e4b-it"
+family = "Gemma"
+name = "Gemma 4 E4B IT"
+hf_repo = "google/gemma-4-E4B-it"
+params_b = 8.0
+active_params_b = 4.5
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "4.5B effective (8B with per-layer embeddings); active_params_b holds effective size. On-device. When thinking is off, no empty thought block is emitted."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "gemma-4-e2b-it"
+family = "Gemma"
+name = "Gemma 4 E2B IT"
+hf_repo = "google/gemma-4-E2B-it"
+params_b = 5.1
+active_params_b = 2.3
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "2.3B effective (5.1B with per-layer embeddings); active_params_b holds effective size. Same toggle as E4B."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 64
+
+[[model]]
+id = "gemma-3-27b-it"
+family = "Gemma"
+name = "Gemma 3 27B IT"
+hf_repo = "google/gemma-3-27b-it"
+params_b = 27.4
+active_params_b = 27.4
+context_length = 131072
+license = "Gemma"
+gated = true
+reasoning = "none"
+release = "2025-03"
+notes = "Prior generation. No native system role (system text is folded into first user turn). Gated (manual license acceptance); sampling not recorded here."
+
+# ---------------------------------------------------------------- Mistral AI
+
+[[model]]
+id = "mistral-large-4"
+family = "Mistral"
+name = "Mistral Large 4 1T-A52B"
+hf_repo = "mistralai/Mistral-Large-4-1T-A52B"
+params_b = 1000
+active_params_b = 52
+context_length = 1048576
+license = "Mistral-Ecosystem-Open-Weight"
+gated = false
+reasoning = "always"
+release = "2026-09"
+notes = "Multimodal MoE, 49B active (52B incl. embeddings). reasoning_effort low|medium|high (default high); template rejects other values. Needs --reasoning-parser mistral and --tool-call-parser mistral in vLLM."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "mistral-medium-3.5"
+family = "Mistral"
+name = "Mistral Medium 3.5 128B"
+hf_repo = "mistralai/Mistral-Medium-3.5-128B"
+params_b = 128
+active_params_b = 128
+context_length = 262144
+license = "Modified-MIT"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "Dense VLM merging instruct, reasoning and coding. reasoning_effort none|high. For none: temperature 0.0 to 0.7 by task, top_p unset."
+[model.sampling]
+temperature = 0.7
+[model.sampling_thinking]
+temperature = 0.7
+top_p = 0.95
+
+[[model]]
+id = "mistral-small-4"
+family = "Mistral"
+name = "Mistral Small 4 119B-A6.5B (2603)"
+hf_repo = "mistralai/Mistral-Small-4-119B-2603"
+params_b = 119
+active_params_b = 6.5
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "MoE VLM that replaces Magistral and Mistral Small 3.2. reasoning_effort none|high. For none: temperature 0.0 to 0.7 by task. config.json allows 1M, card states 256K."
+[model.sampling]
+temperature = 0.7
+[model.sampling_thinking]
+temperature = 0.7
+
+[[model]]
+id = "ministral-3-14b-instruct"
+family = "Mistral"
+name = "Ministral 3 14B Instruct (2512)"
+hf_repo = "mistralai/Ministral-3-14B-Instruct-2512"
+params_b = 14
+active_params_b = 14
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Dense VLM. Card: temperature below 0.1 for production use. Separate -Reasoning-2512 checkpoints exist (temperature 1.0, keep traces in context)."
+[model.sampling]
+temperature = 0.1
+
+[[model]]
+id = "ministral-3-8b-instruct"
+family = "Mistral"
+name = "Ministral 3 8B Instruct (2512)"
+hf_repo = "mistralai/Ministral-3-8B-Instruct-2512"
+params_b = 8.9
+active_params_b = 8.9
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Dense VLM (safetensors total incl. vision encoder). Temperature below 0.1 recommended."
+[model.sampling]
+temperature = 0.1
+
+[[model]]
+id = "ministral-3-3b-instruct"
+family = "Mistral"
+name = "Ministral 3 3B Instruct (2512)"
+hf_repo = "mistralai/Ministral-3-3B-Instruct-2512"
+params_b = 3.85
+active_params_b = 3.85
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Dense VLM (safetensors total incl. vision encoder). Temperature below 0.1 recommended."
+[model.sampling]
+temperature = 0.1
+
+[[model]]
+id = "devstral-2-123b"
+family = "Mistral"
+name = "Devstral 2 123B Instruct (2512)"
+hf_repo = "mistralai/Devstral-2-123B-Instruct-2512"
+params_b = 123
+active_params_b = 123
+context_length = 262144
+license = "Modified-MIT"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Dense coding agent model. Use the repo system prompt for agentic scaffolds."
+[model.sampling]
+temperature = 0.15
+
+[[model]]
+id = "devstral-small-2-24b"
+family = "Mistral"
+name = "Devstral Small 2 24B Instruct (2512)"
+hf_repo = "mistralai/Devstral-Small-2-24B-Instruct-2512"
+params_b = 24
+active_params_b = 24
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Dense coding agent model, fits a single 32GB device when quantized. config.json max_position_embeddings is 393216; card states 256K."
+[model.sampling]
+temperature = 0.15
+
+# ---------------------------------------------------------------- DeepSeek
+
+[[model]]
+id = "deepseek-v4-pro-0813"
+family = "DeepSeek"
+name = "DeepSeek V4 Pro (0813)"
+hf_repo = "deepseek-ai/DeepSeek-V4-Pro-0813"
+params_b = 1600
+active_params_b = 49
+context_length = 1048576
+license = "MIT"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "No Jinja chat template; use repo encoding/ (encode_messages, thinking_mode chat|thinking). reasoning_effort low|high|max. top_p 0.95 for agentic use, 1.0 otherwise. Large output budget for high/max."
+[model.sampling]
+temperature = 1.0
+top_p = 1.0
+
+[[model]]
+id = "deepseek-v4.1-flash-1017"
+family = "DeepSeek"
+name = "DeepSeek V4.1 Flash (1017)"
+hf_repo = "deepseek-ai/DeepSeek-V4.1-Flash-1017"
+params_b = 552
+active_params_b = 16
+context_length = 1048576
+license = "MIT"
+gated = false
+reasoning = "hybrid"
+release = "2026-10"
+notes = "Multimodal MoE, 552B backbone, 8B to 16B activated (dynamic). No Jinja template; use encoding/. Numeric reasoning_effort 1-100 (default 75) in thinking mode; chat mode closes </think> immediately. max_tokens >= 256K."
+[model.sampling]
+temperature = 1.0
+top_p = 1.0
+max_tokens = 262144
+
+[[model]]
+id = "deepseek-v3.2"
+family = "DeepSeek"
+name = "DeepSeek V3.2"
+hf_repo = "deepseek-ai/DeepSeek-V3.2"
+params_b = 685
+active_params_b = 37
+context_length = 131072
+license = "MIT"
+gated = false
+reasoning = "hybrid"
+release = "2025-12"
+notes = "Prior generation. DSA sparse attention. No Jinja template; use encoding/ (thinking_mode, drop_thinking, add_default_bos_token). Thinking with tools supported."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+# ---------------------------------------------------------------- OpenAI gpt-oss
+
+[[model]]
+id = "gpt-oss-120b"
+family = "gpt-oss"
+name = "gpt-oss-120b"
+hf_repo = "openai/gpt-oss-120b"
+params_b = 117
+active_params_b = 5.1
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2025-08"
+notes = "Harmony response format required (analysis/final channels, developer role). Effort via system prompt 'Reasoning: low|medium|high'. MXFP4 MoE weights."
+[model.sampling]
+temperature = 1.0
+top_p = 1.0
+
+[[model]]
+id = "gpt-oss-20b"
+family = "gpt-oss"
+name = "gpt-oss-20b"
+hf_repo = "openai/gpt-oss-20b"
+params_b = 21
+active_params_b = 3.6
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2025-08"
+notes = "Harmony response format required. Effort via system prompt 'Reasoning: low|medium|high'."
+[model.sampling]
+temperature = 1.0
+top_p = 1.0
+
+# ---------------------------------------------------------------- Phi (Microsoft)
+
+[[model]]
+id = "phi-4-reasoning-plus"
+family = "Phi"
+name = "Phi-4-reasoning-plus"
+hf_repo = "microsoft/Phi-4-reasoning-plus"
+params_b = 14.7
+active_params_b = 14.7
+context_length = 32768
+license = "MIT"
+gated = false
+reasoning = "always"
+release = "2025-04"
+notes = "ChatML template with the mandatory Phi reasoning system prompt from the card. Output <think>...</think> then answer."
+[model.sampling]
+temperature = 0.8
+top_p = 0.95
+top_k = 50
+max_tokens = 32768
+
+[[model]]
+id = "phi-4"
+family = "Phi"
+name = "Phi-4 14B"
+hf_repo = "microsoft/phi-4"
+params_b = 14.7
+active_params_b = 14.7
+context_length = 16384
+license = "MIT"
+gated = false
+reasoning = "none"
+release = "2024-12"
+notes = "ChatML-style template (<|im_start|>role<|im_sep|>). No vendor sampling recommendation."
+
+[[model]]
+id = "phi-4-mini-instruct"
+family = "Phi"
+name = "Phi-4-mini-instruct"
+hf_repo = "microsoft/Phi-4-mini-instruct"
+params_b = 3.8
+active_params_b = 3.8
+context_length = 131072
+license = "MIT"
+gated = false
+reasoning = "none"
+release = "2025-02"
+notes = "<|system|>...<|end|> template; tools go in system prompt between <|tool|> and <|/tool|>. Card examples use greedy decoding (temperature 0)."
+[model.sampling]
+temperature = 0.0
+
+# ---------------------------------------------------------------- OLMo (Ai2)
+
+[[model]]
+id = "olmo-3.1-32b-think"
+family = "OLMo"
+name = "Olmo 3.1 32B Think"
+hf_repo = "allenai/Olmo-3.1-32B-Think"
+params_b = 32.2
+active_params_b = 32.2
+context_length = 65536
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2025-12"
+notes = "Fully open (data and code). Card gives a default system prompt; output starts with reasoning then </think>."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+max_tokens = 32768
+
+[[model]]
+id = "olmo-3.1-32b-instruct"
+family = "OLMo"
+name = "Olmo 3.1 32B Instruct"
+hf_repo = "allenai/Olmo-3.1-32B-Instruct"
+params_b = 32.2
+active_params_b = 32.2
+context_length = 65536
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-12"
+notes = "Fully open. Sampling from generation_config.json."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+
+[[model]]
+id = "olmo-3-7b-think"
+family = "OLMo"
+name = "Olmo 3 7B Think"
+hf_repo = "allenai/Olmo-3-7B-Think"
+params_b = 7.3
+active_params_b = 7.3
+context_length = 65536
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2025-11"
+notes = "Fully open. Same template as Olmo 3.1 Think."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+max_tokens = 32768
+
+[[model]]
+id = "olmo-3-7b-instruct"
+family = "OLMo"
+name = "Olmo 3 7B Instruct"
+hf_repo = "allenai/Olmo-3-7B-Instruct"
+params_b = 7.3
+active_params_b = 7.3
+context_length = 65536
+license = "Apache-2.0"
+gated = false
+reasoning = "none"
+release = "2025-11"
+notes = "Fully open. Sampling from generation_config.json."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+
+# ---------------------------------------------------------------- Kimi (Moonshot AI)
+
+[[model]]
+id = "kimi-k3.1-pro"
+family = "Kimi"
+name = "Kimi K3.1 Pro"
+hf_repo = "moonshotai/Kimi-K3.1-Pro"
+params_b = 2800
+active_params_b = 104
+context_length = 1048576
+license = "Kimi-K3.1-Pro-License"
+gated = false
+reasoning = "always"
+release = "2026-11"
+notes = "Multimodal MoE (KDA plus Gated DSA), MXFP4 QAT weights. reasoning_effort low|high|max (default max), top-level request field. Trained with preserved thinking history; keep reasoning_content in multi-turn. Sampling = vendor eval settings."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "kimi-k2.6"
+family = "Kimi"
+name = "Kimi K2.6"
+hf_repo = "moonshotai/Kimi-K2.6"
+params_b = 1000
+active_params_b = 32
+context_length = 262144
+license = "Modified-MIT"
+gated = false
+reasoning = "hybrid"
+release = "2026-04"
+notes = "Prior generation (1T MoE VLM). Instant mode via chat_template_kwargs {thinking: false} on vLLM/SGLang."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+
+# ---------------------------------------------------------------- GLM (Z.ai)
+
+[[model]]
+id = "glm-5.3"
+family = "GLM"
+name = "GLM-5.3"
+hf_repo = "zai-org/GLM-5.3"
+params_b = 744
+active_params_b = 40
+context_length = 1048576
+license = "GLM-5.3-License"
+gated = false
+reasoning = "always"
+release = "2026-08"
+notes = "Same base as GLM-5.2 (GLM-5: 744B total, 40B active). reasoning_effort low|high|max (default max). clear_thinking defaults to false; pass clear_thinking=true for plain chat. Sampling from generation_config.json."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "glm-5.3-flash"
+family = "GLM"
+name = "GLM-5.3-Flash"
+hf_repo = "zai-org/GLM-5.3-Flash"
+params_b = 320
+active_params_b = 18
+context_length = 1048576
+license = "MIT"
+gated = false
+reasoning = "always"
+release = "2026-08"
+notes = "First natively multimodal GLM-5 model. reasoning_effort low|high|max (default max); clear_thinking=true for chat."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "glm-4.7-flash"
+family = "GLM"
+name = "GLM-4.7-Flash (30B-A3B)"
+hf_repo = "zai-org/GLM-4.7-Flash"
+params_b = 31.2
+active_params_b = 3
+context_length = 202752
+license = "MIT"
+gated = false
+reasoning = "hybrid"
+release = "2026-01"
+notes = "Prior generation, small MoE. Turn on Preserved Thinking for multi-turn agentic tasks. Card default: temperature 1.0, top_p 0.95, max new tokens 131072."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+max_tokens = 131072
+
+# ---------------------------------------------------------------- MiniMax
+
+[[model]]
+id = "minimax-m3.1-flash"
+family = "MiniMax"
+name = "MiniMax-M3.1-Flash"
+hf_repo = "MiniMaxAI/MiniMax-M3.1-Flash"
+params_b = 428
+active_params_b = 23
+context_length = 1048576
+license = "MiniMax-Community"
+gated = false
+reasoning = "always"
+release = "2026-10"
+notes = "Multimodal MoE (safetensors total 220B suggests low-bit packed weights). reasoning_effort low|medium|high|xhigh|max rendered as <effort> tag. MiniMax-M3 (same size) adds thinking_mode enabled|disabled|adaptive."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "minimax-m2.7"
+family = "MiniMax"
+name = "MiniMax-M2.7"
+hf_repo = "MiniMaxAI/MiniMax-M2.7"
+params_b = 230
+active_params_b = 10
+context_length = 204800
+license = "Other-MiniMax-M2.7"
+gated = false
+reasoning = "always"
+release = "2026-04"
+notes = "Prior generation, text-only. Interleaved thinking: keep <think>...</think> of earlier assistant turns in history. Card gives a default system prompt. Params from MiniMax-M2 card (230B/10B)."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 40
+
+# ---------------------------------------------------------------- IBM Granite
+
+[[model]]
+id = "granite-4.2-30b"
+family = "Granite"
+name = "Granite 4.2 30B"
+hf_repo = "ibm-granite/granite-4.2-30b"
+params_b = 29.3
+active_params_b = 29.3
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "Dense reasoning model. enable_thinking default true; reasoning_effort low for low-effort mode. Prior thinking truncated from history by default. 128K native, 512K extended."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "granite-4.2-8b"
+family = "Granite"
+name = "Granite 4.2 8B"
+hf_repo = "ibm-granite/granite-4.2-8b"
+params_b = 8.8
+active_params_b = 8.8
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "Dense. Same toggles as granite-4.2-30b. Card: temperature 1.0 and top_p 0.95 required for all modes."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "granite-4.2-3b"
+family = "Granite"
+name = "Granite 4.2 3B"
+hf_repo = "ibm-granite/granite-4.2-3b"
+params_b = 3.7
+active_params_b = 3.7
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "Dense. Same toggles as granite-4.2-30b."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+# ---------------------------------------------------------------- NVIDIA Nemotron
+
+[[model]]
+id = "nemotron-3-ultra-550b-a55b"
+family = "Nemotron"
+name = "NVIDIA Nemotron 3 Ultra 550B-A55B"
+hf_repo = "nvidia/NVIDIA-Nemotron-3-Ultra-550B-A55B-BF16"
+params_b = 550
+active_params_b = 55
+context_length = 1048576
+license = "OpenMDW-1.1"
+gated = false
+reasoning = "hybrid"
+release = "2026-06"
+notes = "Hybrid Mamba-Transformer MoE. enable_thinking True|False via chat_template_kwargs; with tools on chat completions also set force_nonempty_content=true. config.json is 256K, card states up to 1M."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "nemotron-3-super-120b-a12b"
+family = "Nemotron"
+name = "NVIDIA Nemotron 3 Super 120B-A12B"
+hf_repo = "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16"
+params_b = 120
+active_params_b = 12
+context_length = 1048576
+license = "NVIDIA-Nemotron-Open-Model-License"
+gated = false
+reasoning = "hybrid"
+release = "2026-03"
+notes = "Hybrid Mamba-Transformer MoE. enable_thinking toggle. Card: same sampling for reasoning, tool calling and chat on all backends."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "nemotron-3.5-lightning-30b-a3b"
+family = "Nemotron"
+name = "NVIDIA Nemotron 3.5 Lightning 30B-A3B"
+hf_repo = "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16"
+params_b = 30
+active_params_b = 3
+context_length = 1048576
+license = "OpenMDW-1.1"
+gated = false
+reasoning = "hybrid"
+release = "2026-08"
+notes = "Hybrid Mamba-Transformer MoE with MTP. enable_thinking default true. NVIDIA single-H100 recipe uses 256K."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "nemotron-3.5-bolt-74b-a9b"
+family = "Nemotron"
+name = "NVIDIA Nemotron 3.5 Bolt 74B-A9B"
+hf_repo = "nvidia/NVIDIA-Nemotron-3.5-Bolt-74B-A9B-BF16"
+params_b = 74.9
+active_params_b = 9
+context_length = 262144
+license = "OpenMDW-1.1"
+gated = false
+reasoning = "hybrid"
+release = "2026-10"
+notes = "VLM pruned from Nemotron 3.5 Super VL for local agentic use. enable_thinking toggle plus a medium-effort kwarg."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+[[model]]
+id = "nemotron-3-nano-30b-a3b"
+family = "Nemotron"
+name = "NVIDIA Nemotron 3 Nano 30B-A3B"
+hf_repo = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16"
+params_b = 30
+active_params_b = 3.5
+context_length = 262144
+license = "NVIDIA-Nemotron-Open-Model-License"
+gated = false
+reasoning = "hybrid"
+release = "2025-12"
+notes = "Prior generation. enable_thinking default true. Reasoning: temp 1.0/top_p 1.0; tool calling: temp 0.6/top_p 0.95. Up to 1M context with config change."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 1.0
+
+# ---------------------------------------------------------------- SmolLM (Hugging Face)
+
+[[model]]
+id = "smollm3-3b"
+family = "SmolLM"
+name = "SmolLM3 3B"
+hf_repo = "HuggingFaceTB/SmolLM3-3B"
+params_b = 3.08
+active_params_b = 3.08
+context_length = 65536
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2025-07"
+notes = "Extended thinking on by default; /think and /no_think flags in system prompt, or enable_thinking kwarg. 64K native, 128K with YaRN."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+
+# ---------------------------------------------------------------- Falcon (TII)
+
+[[model]]
+id = "falcon-h1r-7b"
+family = "Falcon"
+name = "Falcon-H1R 7B"
+hf_repo = "tiiuae/Falcon-H1R-7B"
+params_b = 7.6
+active_params_b = 7.6
+context_length = 262144
+license = "Falcon-LLM-License"
+gated = false
+reasoning = "always"
+release = "2026-01"
+notes = "Hybrid Mamba-Transformer reasoning model. Max new tokens up to 65536 recommended."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+max_tokens = 65536
+
+# ---------------------------------------------------------------- Hunyuan / Hy (Tencent)
+
+[[model]]
+id = "hy4"
+family = "Hunyuan"
+name = "Tencent Hy4"
+hf_repo = "tencent/Hy4"
+params_b = 770
+active_params_b = 49
+context_length = 1048576
+license = "Tencent-Hy-License"
+gated = false
+reasoning = "hybrid"
+release = "2026-10"
+notes = "Multimodal MoE (770B backbone excl. ViT and DFly2 drafter). reasoning_effort no_think|high (default high) via chat_template_kwargs."
+[model.sampling]
+temperature = 0.9
+top_p = 1.0
+
+[[model]]
+id = "hy4-flash"
+family = "Hunyuan"
+name = "Tencent Hy4 flash"
+hf_repo = "tencent/Hy4-flash"
+params_b = 220
+active_params_b = 12
+context_length = 1048576
+license = "Tencent-Hy-License"
+gated = false
+reasoning = "hybrid"
+release = "2026-11"
+notes = "220B total includes 64B Engram parameters (155.5B backbone). reasoning_effort high (default) or no_think."
+[model.sampling]
+temperature = 0.9
+top_p = 1.0
+
+[[model]]
+id = "hy3"
+family = "Hunyuan"
+name = "Tencent Hy3"
+hf_repo = "tencent/Hy3"
+params_b = 295
+active_params_b = 21
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-07"
+notes = "Prior generation. reasoning_effort no_think (default) | low | high."
+[model.sampling]
+temperature = 0.9
+top_p = 1.0
+
+# ---------------------------------------------------------------- ERNIE (Baidu)
+
+[[model]]
+id = "ernie-5.5-flash-preview"
+family = "ERNIE"
+name = "ERNIE 5.5 Flash Preview"
+hf_repo = "baidu/ERNIE-5.5-Flash-Preview"
+params_b = 280
+active_params_b = 14
+context_length = 1048576
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-11"
+notes = "MoE, preview release. Thinking on by default; enable_thinking false to disable; reasoning_effort low|medium|high (default high). Sampling from generation_config.json."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+
+# ---------------------------------------------------------------- LFM (Liquid AI)
+
+[[model]]
+id = "lfm2.5-24b-a2b"
+family = "LFM"
+name = "LFM2.5 24B-A2B"
+hf_repo = "LiquidAI/LFM2.5-24B-A2B"
+params_b = 24
+active_params_b = 2
+context_length = 131072
+license = "LFM-1.0"
+gated = false
+reasoning = "always"
+release = "2026-10"
+notes = "Hybrid conv-attention MoE for on-device agents; always thinks. Card: weak on knowledge-heavy tasks without retrieval."
+[model.sampling]
+temperature = 0.1
+top_k = 50
+
+[[model]]
+id = "lfm3-1.7b"
+family = "LFM"
+name = "LFM3 1.7B"
+hf_repo = "LiquidAI/LFM3-1.7B"
+params_b = 1.73
+active_params_b = 1.73
+context_length = 262144
+license = "LFM-1.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-10"
+notes = "Reasoning on by default; enable_thinking=False disables it but card says this can be inconsistent. General: temp 0.1, top_k 50, repetition_penalty 1.1. Math/STEM: temp 1.0, top_p 0.95, top_k 20."
+[model.sampling]
+temperature = 0.1
+top_k = 50
+[model.sampling_thinking]
+temperature = 1.0
+top_p = 0.95
+top_k = 20
+
+# ---------------------------------------------------------------- Seed-OSS (ByteDance)
+
+[[model]]
+id = "seed-oss-36b-instruct"
+family = "Seed-OSS"
+name = "Seed-OSS 36B Instruct"
+hf_repo = "ByteDance-Seed/Seed-OSS-36B-Instruct"
+params_b = 36.2
+active_params_b = 36.2
+context_length = 524288
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2025-08"
+notes = "Dense, 512K native. thinking_budget kwarg (multiples of 512 advised); unlimited thinking when unset. Uses <seed:think> tags."
+[model.sampling]
+temperature = 1.1
+top_p = 0.95
+
+# ---------------------------------------------------------------- Command A (Cohere)
+
+[[model]]
+id = "command-a-plus-05-2026"
+family = "Command A"
+name = "Command A+ (05-2026)"
+hf_repo = "CohereLabs/command-a-plus-05-2026-bf16"
+params_b = 218
+active_params_b = 25
+context_length = 131072
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-05"
+notes = "Sparse MoE VLM, 128K input and 64K output. Reasoning on by default; reasoning=false or reasoning_effort none disables. Thinking between <|START_THINKING|> and <|END_THINKING|>. Sampling from card example code."
+[model.sampling]
+temperature = 0.6
+top_p = 0.95
+
+# ---------------------------------------------------------------- Intern (Shanghai AI Lab)
+
+[[model]]
+id = "intern-s2-397b"
+family = "InternLM"
+name = "Intern-S2 397B"
+hf_repo = "internlm/Intern-S2-397B"
+params_b = 397
+active_params_b = 17
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "hybrid"
+release = "2026-09"
+notes = "Scientific multimodal MoE on the Qwen3.5-397B-A17B architecture (active params inferred from that architecture). enable_thinking=False disables thinking."
+[model.sampling]
+temperature = 0.8
+top_p = 0.95
+top_k = 50
+min_p = 0.0
+
+# ---------------------------------------------------------------- Step (StepFun)
+
+[[model]]
+id = "step-5-preview"
+family = "Step"
+name = "Step 5 Preview"
+hf_repo = "stepfun-ai/Step-5-Preview"
+params_b = 600
+active_params_b = 27
+context_length = 1048576
+license = "Other-StepFun-Step-5"
+gated = false
+reasoning = "always"
+release = "2026-09"
+notes = "Sparse MoE VLM, preview. Template renders 'Reasoning: <effort>' into the system turn; supports preserve_thinking. top_k 0 means disabled."
+[model.sampling]
+temperature = 1.0
+top_p = 0.95
+top_k = 0
+
+[[model]]
+id = "step-3.7-flash"
+family = "Step"
+name = "Step 3.7 Flash"
+hf_repo = "stepfun-ai/Step-3.7-Flash"
+params_b = 196
+active_params_b = 11
+context_length = 262144
+license = "Apache-2.0"
+gated = false
+reasoning = "always"
+release = "2026-05"
+notes = "MoE VLM (196B language backbone plus 1.8B vision encoder). Reasoning levels low|medium|high via 'Reasoning: <effort>' in system turn. No vendor sampling stated."
