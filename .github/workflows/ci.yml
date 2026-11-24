@@ -33,6 +33,15 @@ jobs:
       - name: Test
         run: cargo test --workspace --locked
 
+  msrv:
+    name: MSRV build (1.88)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.88.0
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo check --workspace --locked
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest

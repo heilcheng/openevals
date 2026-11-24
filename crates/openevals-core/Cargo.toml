@@ -3,6 +3,7 @@ name = "openevals-core"
 description = "Core types, configuration, model registry, metrics and result formats for openevals"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 
 [dependencies]

@@ -36,10 +36,13 @@ fn mean(v: &[f64]) -> Option<f64> {
 }
 
 pub async fn run_efficiency(gen: &dyn Generator, cfg: &TaskConfig) -> Result<TaskResult> {
-    let prompts: Vec<String> = cfg
+    let mut prompts: Vec<String> = cfg
         .sample_prompts
         .clone()
         .unwrap_or_else(|| DEFAULT_PROMPTS.iter().map(|s| s.to_string()).collect());
+    if prompts.is_empty() {
+        prompts = DEFAULT_PROMPTS.iter().map(|s| s.to_string()).collect();
+    }
     let lengths = cfg
         .output_lengths
         .clone()
@@ -57,7 +60,7 @@ pub async fn run_efficiency(gen: &dyn Generator, cfg: &TaskConfig) -> Result<Tas
     };
 
     for i in 0..warmup {
-        let p = &prompts[i % prompts.len().max(1)];
+        let p = &prompts[i % prompts.len()];
         let _ = gen.generate_timed(&request(p, 16)).await;
     }
 

@@ -3,6 +3,7 @@ name = "openevals-tasks"
 description = "Benchmark definitions, scorers and the evaluation runner"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 
 [dependencies]

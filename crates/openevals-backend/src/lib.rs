@@ -11,7 +11,7 @@ use openevals_core::types::split_think;
 use openevals_core::{Completion, Error, GenRequest, Generator, Result};
 use serde_json::{json, Map, Value};
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct BackendConfig {
     pub base_url: String,
     pub api_key: Option<String>,
@@ -27,6 +27,22 @@ pub struct BackendConfig {
     pub thinking: Option<bool>,
     pub reasoning_effort: Option<String>,
     pub extra_body: Map<String, Value>,
+}
+
+// Manual Debug so the API key can never end up in a log line.
+impl std::fmt::Debug for BackendConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BackendConfig")
+            .field("base_url", &self.base_url)
+            .field("api_key", &self.api_key.as_ref().map(|_| "<redacted>"))
+            .field("served_name", &self.served_name)
+            .field("label", &self.label)
+            .field("timeout", &self.timeout)
+            .field("max_retries", &self.max_retries)
+            .field("thinking", &self.thinking)
+            .field("reasoning_effort", &self.reasoning_effort)
+            .finish_non_exhaustive()
+    }
 }
 
 impl BackendConfig {
@@ -276,6 +292,14 @@ impl Generator for OpenAiBackend {
         &self.cfg.label
     }
 
+    fn fingerprint(&self) -> String {
+        let extra = serde_json::to_string(&self.cfg.extra_body).unwrap_or_default();
+        format!(
+            "{}|thinking={:?}|effort={:?}|extra={}",
+            self.cfg.served_name, self.cfg.thinking, self.cfg.reasoning_effort, extra
+        )
+    }
+
     async fn generate(&self, req: &GenRequest) -> Result<Completion> {
         self.with_retries(|| self.once(req)).await
     }
@@ -358,5 +382,15 @@ mod tests {
             retry_after_secs: Some(1),
         };
         assert_eq!(b.backoff(0, &ra), Duration::from_millis(500));
+    }
+
+    #[test]
+    fn fingerprint_tracks_thinking_and_hides_key() {
+        let a = backend(|c| c.thinking = Some(true));
+        let b = backend(|c| c.thinking = Some(false));
+        assert_ne!(a.fingerprint(), b.fingerprint());
+        let k = backend(|c| c.api_key = Some("sk-secret".into()));
+        assert!(!format!("{:?}", k.cfg).contains("sk-secret"));
+        assert!(!k.fingerprint().contains("sk-secret"));
     }
 }

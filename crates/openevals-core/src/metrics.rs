@@ -7,7 +7,9 @@ fn re(cell: &'static OnceLock<Regex>, pat: &str) -> &'static Regex {
     cell.get_or_init(|| Regex::new(pat).expect("valid regex"))
 }
 
-const NUM: &str = r"-?[0-9][0-9,]*(?:\.[0-9]+)?";
+/// A number with optional thousands separators. "1,234" is one number but
+/// "1,2" is two, so lists are not glued together.
+const NUM: &str = r"-?(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\.[0-9]+)?";
 
 fn parse_num(s: &str) -> Option<f64> {
     s.replace(',', "").parse::<f64>().ok()
@@ -116,7 +118,8 @@ pub fn pass_at_k(n: usize, c: usize, k: usize) -> f64 {
     if k == 0 || n == 0 {
         return 0.0;
     }
-    if n - c.min(n) < k {
+    let c = c.min(n);
+    if n - c < k {
         return 1.0;
     }
     // 1 - prod_{i = n-c+1}^{n} (1 - k / i), stable for large n.
@@ -207,10 +210,42 @@ pub fn math_equal(pred: &str, truth: &str) -> bool {
     if p == t {
         return true;
     }
-    match (parse_num(&p), parse_num(&t)) {
-        (Some(a), Some(b)) => (a - b).abs() < 1e-6,
+    match (math_value(&p), math_value(&t)) {
+        (Some(a), Some(b)) => (a - b).abs() < 1e-6 * b.abs().max(1.0),
         _ => false,
     }
+}
+
+/// Numeric value of a normalised answer: plain numbers (thousands separators
+/// only in the 1,234 form), `\frac{a}{b}`, `\frac12` and `a/b`.
+fn math_value(s: &str) -> Option<f64> {
+    static NUMBER: OnceLock<Regex> = OnceLock::new();
+    static FRAC: OnceLock<Regex> = OnceLock::new();
+    static SLASH: OnceLock<Regex> = OnceLock::new();
+    let number = re(&NUMBER, &format!("^{NUM}$"));
+    let num = |x: &str| number.is_match(x).then(|| parse_num(x)).flatten();
+    if let Some(v) = num(s) {
+        return Some(v);
+    }
+    let frac = re(
+        &FRAC,
+        r"^(-?)\\frac(?:\{([^{}]+)\}|([0-9]))(?:\{([^{}]+)\}|([0-9]))$",
+    );
+    if let Some(c) = frac.captures(s) {
+        let a = num(c.get(2).or(c.get(3))?.as_str())?;
+        let b = num(c.get(4).or(c.get(5))?.as_str())?;
+        if b == 0.0 {
+            return None;
+        }
+        let v = a / b;
+        return Some(if &c[1] == "-" { -v } else { v });
+    }
+    let slash = re(&SLASH, r"^(-?[0-9.,]+)/([0-9.,]+)$");
+    if let Some(c) = slash.captures(s) {
+        let (a, b) = (num(&c[1])?, num(&c[2])?);
+        return (b != 0.0).then(|| a / b);
+    }
+    None
 }
 
 #[cfg(test)]
@@ -253,6 +288,20 @@ mod tests {
     #[test]
     fn negative_numbers() {
         assert_eq!(extract_numerical_answer("The answer is -4"), Some(-4.0));
+    }
+
+    #[test]
+    fn list_commas_are_not_thousands() {
+        assert_eq!(extract_numerical_answer("values 5,6"), Some(6.0));
+        assert_eq!(
+            extract_numerical_answer("so 1,234,567 total"),
+            Some(1234567.0)
+        );
+    }
+
+    #[test]
+    fn pass_at_k_clamps_c() {
+        assert_eq!(pass_at_k(3, 9, 1), 1.0);
     }
 
     #[test]
@@ -311,5 +360,13 @@ mod tests {
         assert!(math_equal("45^\\circ", "45"));
         assert!(math_equal("\\text{(A)}", "(A)"));
         assert!(!math_equal("3", "4"));
+        assert!(math_equal("\\frac12", "\\frac{1}{2}"));
+        assert!(math_equal("1/2", "\\frac{1}{2}"));
+        assert!(math_equal("0.5", "\\frac{1}{2}"));
+        assert!(math_equal("-\\frac{3}{4}", "-0.75"));
+        assert!(math_equal("1,000", "1000"));
+        // a list is not the number with its commas removed
+        assert!(!math_equal("1,2", "12"));
+        assert!(!math_equal("\\frac{1}{0}", "0"));
     }
 }

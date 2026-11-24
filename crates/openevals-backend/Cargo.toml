@@ -3,6 +3,7 @@ name = "openevals-backend"
 description = "OpenAI-compatible HTTP backend with retries and streaming timing"
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 
 [dependencies]

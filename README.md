@@ -17,7 +17,7 @@ The suite was originally a Google Summer of Code 2025 project mentored by Google
 
 ## Install
 
-Requires a recent stable Rust toolchain. HumanEval additionally needs `python3` on the PATH.
+Requires Rust 1.88 or newer (the minimum supported version, checked in CI). HumanEval additionally needs `python3` on the PATH.
 
 ```bash
 git clone https://github.com/heilcheng/openevals.git
@@ -116,7 +116,7 @@ limit = 500
 max_tokens = 1024
 ```
 
-Task keys: `type`, `name`, `subset`, `shots`, `limit`, `max_tokens`, `temperature`, `data_file`; HumanEval adds `samples`, `k_values`, `timeout`, `python`; TruthfulQA adds `task_type` (`generation` or `mc1`); efficiency adds `sample_prompts`, `output_lengths`, `warmup_runs`, `measurement_runs`. See `configs/` for complete examples, including Ollama.
+Task keys: `type`, `name`, `subset`, `shots`, `limit` (a seeded random subset, not the first N rows, because some datasets are sorted by subject), `max_tokens`, `temperature`, `data_file`; HumanEval adds `samples`, `k_values`, `timeout`, `python`; TruthfulQA adds `task_type` (`generation` or `mc1`); efficiency adds `sample_prompts`, `output_lengths`, `warmup_runs`, `measurement_runs`. See `configs/` for complete examples, including Ollama.
 
 By default requests use greedy decoding (temperature 0) so scores are reproducible. Reasoning models usually need a larger `max_tokens` so the final answer is not cut off inside the thinking block. Inline `<think>` blocks and separate `reasoning_content` fields are removed before scoring.
 
@@ -212,6 +212,18 @@ The registry lists the latest generation of each family as of 2026-11-24, with o
 | `step-3.7-flash` | Step | `stepfun-ai/Step-3.7-Flash` | 196B (11B) | 256K | Apache-2.0 | always |
 
 Chat template notes, recommended sampling and sources for each family are in [docs/MODELS.md](docs/MODELS.md).
+
+## Security: HumanEval runs model-generated code
+
+The HumanEval benchmark executes code written by the model on your machine. The built-in sandbox is best effort and is **not container-grade isolation**. It runs each program in a separate `python3 -I` process in an empty temporary directory (deleted afterwards), with stdin closed, a wall-clock timeout after which the process is killed, a static check that rejects imports outside an allowlist and calls such as `eval`, `exec`, `open` and `__import__`, and CPU and address-space limits through `ulimit` where the platform honours them (Linux does; macOS ignores the memory limit). The static check is a regex filter and can be bypassed by determined or adversarial code. There is no network, filesystem or syscall isolation.
+
+Run HumanEval for untrusted or unvetted models inside a container or VM, for example with the provided `Dockerfile` (the image runs as an unprivileged user; add `--cap-drop ALL --security-opt no-new-privileges` and a memory limit to `docker run`), or skip the `humaneval` task.
+
+API keys are read only from the environment variables named by `api_key_env` in the config. They are never written to results, caches or logs.
+
+## Caching
+
+Completions are cached per model in `results/cache/<model>.jsonl`, keyed by the model label, the served model name, `thinking`, `reasoning_effort`, `extra_body`, the full prompt and the sampling parameters. Changing any of these re-queries the server. The key does not include `base_url` or the weights behind it, so delete the cache file if you swap a server for a different quantization of the same model name.
 
 ## Migrating from the Python version
 

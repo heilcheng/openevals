@@ -89,6 +89,8 @@ async fn run_once(
     run: u32,
 ) -> Vec<Scored> {
     let samples = task.samples_per_item();
+    let model_key = format!("{}|{}", ctx.label, gen.fingerprint());
+    let model_key = model_key.as_str();
     let total = items.len();
     let done = std::sync::atomic::AtomicUsize::new(0);
     let jobs = items.iter().map(|item| {
@@ -108,7 +110,7 @@ async fn run_once(
                     messages: item.messages.clone(),
                     params: p,
                 };
-                completions.push(generate_cached(gen, cache, &ctx.label, &req, run).await);
+                completions.push(generate_cached(gen, cache, model_key, &req, run).await);
             }
             let score = if completions.iter().any(|c| c.error.is_some()) {
                 ItemScore {
@@ -225,6 +227,21 @@ fn write_samples(
     Ok(())
 }
 
+/// Keep `limit` items chosen by a seeded shuffle, in original order. Several
+/// datasets are sorted by subject or category, so taking the head would
+/// evaluate only the first few subjects.
+fn subsample(items: Vec<Item>, limit: usize, seed: u64) -> Vec<Item> {
+    if limit >= items.len() {
+        return items;
+    }
+    let mut idx: Vec<usize> = (0..items.len()).collect();
+    openevals_core::rng::SplitMix64::new(seed).shuffle(&mut idx);
+    idx.truncate(limit);
+    idx.sort_unstable();
+    let mut slots: Vec<Option<Item>> = items.into_iter().map(Some).collect();
+    idx.into_iter().filter_map(|i| slots[i].take()).collect()
+}
+
 pub async fn run_task(
     task: &dyn Task,
     data: &DataSource,
@@ -235,7 +252,7 @@ pub async fn run_task(
 ) -> Result<TaskResult> {
     let mut items = task.load(data).await?;
     if let Some(l) = task.limit() {
-        items.truncate(l);
+        items = subsample(items, l, opts.seed);
     }
     tracing::info!(task = task.name(), model = %ctx.label, items = items.len(), "starting");
 

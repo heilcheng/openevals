@@ -89,6 +89,13 @@ pub trait Generator: Send + Sync {
     /// Identifier used in cache keys and result files.
     fn model_id(&self) -> &str;
 
+    /// Everything about the backend that changes outputs but is not part of
+    /// the request (served name, thinking switches, extra body fields). It is
+    /// mixed into cache keys so that changing it never reuses stale replies.
+    fn fingerprint(&self) -> String {
+        self.model_id().to_string()
+    }
+
     async fn generate(&self, req: &GenRequest) -> Result<Completion>;
 
     /// Streaming generation that records time to first token. Backends

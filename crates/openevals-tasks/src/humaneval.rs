@@ -74,20 +74,39 @@ const BANNED_CALLS: &[&str] = &[
     r"\bdelattr\s*\(",
     r"\bglobals\s*\(",
     r"\blocals\s*\(",
+    r"\bvars\s*\(",
+    r"\bbreakpoint\s*\(",
+    r"__builtins__",
+    r"__subclasses__",
+    r"__globals__",
+    r"__bases__",
+    r"__mro__",
+    r"__loader__",
+    r"__spec__",
 ];
 
 /// Static safety check. Returns the list of violations (empty when safe).
 pub fn check_code_security(code: &str) -> Vec<String> {
     let mut violations = Vec::new();
-    let import_re =
-        Regex::new(r"(?m)^\s*(?:import\s+(\w+)|from\s+(\w+)(?:\.\w+)*\s+import\b)").unwrap();
     let allowed: BTreeSet<&str> = ALLOWED_IMPORTS.iter().copied().collect();
+    // `import a, b as c` (also after `;` or `:` on the same line).
+    let import_re = Regex::new(r"(?m)(?:^|[;:])[ \t]*import[ \t]+([^\n;#]+)").unwrap();
     for c in import_re.captures_iter(code) {
-        let m = c
-            .get(1)
-            .or_else(|| c.get(2))
-            .map(|m| m.as_str())
-            .unwrap_or("");
+        for part in c[1].split(',') {
+            let m = part
+                .trim()
+                .split(|ch: char| !(ch.is_alphanumeric() || ch == '_'))
+                .next()
+                .unwrap_or("");
+            if !m.is_empty() && !allowed.contains(m) {
+                violations.push(format!("Disallowed import: {m}"));
+            }
+        }
+    }
+    let from_re =
+        Regex::new(r"(?m)(?:^|[;:])[ \t]*from[ \t]+([A-Za-z_][\w.]*)[ \t]+import\b").unwrap();
+    for c in from_re.captures_iter(code) {
+        let m = c[1].split('.').next().unwrap_or("");
         if !allowed.contains(m) {
             violations.push(format!("Disallowed import: {m}"));
         }
@@ -344,6 +363,12 @@ mod tests {
         assert!(!check_code_security("x = open('f')\n").is_empty());
         assert!(!check_code_security("eval('1')").is_empty());
         assert!(!check_code_security("from subprocess import run").is_empty());
+        // later names in a multi-import and statements after `;` are checked
+        assert!(!check_code_security("import math, os\n").is_empty());
+        assert!(!check_code_security("x = 1; import socket\n").is_empty());
+        assert!(!check_code_security("from os.path import join\n").is_empty());
+        assert!(!check_code_security("().__class__.__bases__\n").is_empty());
+        assert!(check_code_security("import math, itertools as it\n").is_empty());
         // prose in docstrings that starts with "from" or "import" is not an import
         assert!(
             check_code_security("    \"\"\"\n    from two integers, pick one\n    \"\"\"")
