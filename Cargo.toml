@@ -1,0 +1,39 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/openevals-core",
+    "crates/openevals-backend",
+    "crates/openevals-tasks",
+    "crates/openevals-cli",
+]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2021"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = "1"
+async-trait = "0.1"
+clap = { version = "4", features = ["derive"] }
+futures = "0.3"
+regex = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "process", "fs", "io-util", "sync"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+openevals-core = { path = "crates/openevals-core" }
+openevals-backend = { path = "crates/openevals-backend" }
+openevals-tasks = { path = "crates/openevals-tasks" }
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
+strip = true

@@ -45,3 +45,9 @@ data/
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+# Rust
+/target/
+
+# Results and cached data
+/results/
+/data/
