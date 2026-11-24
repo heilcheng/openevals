@@ -79,10 +79,15 @@ const BANNED_CALLS: &[&str] = &[
 /// Static safety check. Returns the list of violations (empty when safe).
 pub fn check_code_security(code: &str) -> Vec<String> {
     let mut violations = Vec::new();
-    let import_re = Regex::new(r"(?m)^\s*(?:import|from)\s+(\w+)").unwrap();
+    let import_re =
+        Regex::new(r"(?m)^\s*(?:import\s+(\w+)|from\s+(\w+)(?:\.\w+)*\s+import\b)").unwrap();
     let allowed: BTreeSet<&str> = ALLOWED_IMPORTS.iter().copied().collect();
     for c in import_re.captures_iter(code) {
-        let m = &c[1];
+        let m = c
+            .get(1)
+            .or_else(|| c.get(2))
+            .map(|m| m.as_str())
+            .unwrap_or("");
         if !allowed.contains(m) {
             violations.push(format!("Disallowed import: {m}"));
         }
@@ -339,6 +344,11 @@ mod tests {
         assert!(!check_code_security("x = open('f')\n").is_empty());
         assert!(!check_code_security("eval('1')").is_empty());
         assert!(!check_code_security("from subprocess import run").is_empty());
+        // prose in docstrings that starts with "from" or "import" is not an import
+        assert!(
+            check_code_security("    \"\"\"\n    from two integers, pick one\n    \"\"\"")
+                .is_empty()
+        );
         // identifiers that merely contain a banned word are fine
         assert!(check_code_security("def reopen_x(): return evaluate(1)").is_empty());
     }
